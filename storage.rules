@@ -1,0 +1,29 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() { return request.auth != null; }
+
+    function membershipDoc(orgId) {
+      return /databases/$(database)/documents/organizations/$(orgId)/memberships/$(request.auth.uid);
+    }
+
+    function hasActiveMembership(orgId) {
+      return signedIn()
+        && exists(membershipDoc(orgId))
+        && get(membershipDoc(orgId)).data.status == "active";
+    }
+
+    function role(orgId) { return get(membershipDoc(orgId)).data.role; }
+
+    function isAdminOrOwner(orgId) {
+      return hasActiveMembership(orgId) && (role(orgId) in ["admin", "owner"]);
+    }
+
+    match /orgs/{orgId}/docs/{documentId}/{allPaths=**} {
+      allow read: if hasActiveMembership(orgId);
+      allow write: if hasActiveMembership(orgId);
+      allow delete: if isAdminOrOwner(orgId);
+    }
+  }
+}

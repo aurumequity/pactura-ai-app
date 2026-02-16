@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    function membershipDoc(orgId) {
+      return /databases/$(database)/documents/organizations/$(orgId)/memberships/$(request.auth.uid);
+    }
+
+    function hasActiveMembership(orgId) {
+      return signedIn()
+        && exists(membershipDoc(orgId))
+        && get(membershipDoc(orgId)).data.status == "active";
+    }
+
+    function role(orgId) { return get(membershipDoc(orgId)).data.role; }
+
+    function isAdminOrOwner(orgId) {
+      return hasActiveMembership(orgId) && (role(orgId) in ["admin", "owner"]);
+    }
+
+    match /organizations/{orgId} {
+      allow read: if hasActiveMembership(orgId);
+      allow create: if signedIn();
+      allow update, delete: if isAdminOrOwner(orgId);
+
+      match /memberships/{userId} {
+        allow read: if hasActiveMembership(orgId);
+        allow create, update, delete: if isAdminOrOwner(orgId);
+      }
+
+      match /invites/{inviteId} {
+        allow read, create, update, delete: if isAdminOrOwner(orgId);
+      }
+
+      match /documents/{documentId} {
+        allow read: if hasActiveMembership(orgId);
+        allow create: if hasActiveMembership(orgId);
+        allow update, delete: if isAdminOrOwner(orgId);
+      }
+
+      match /chatSessions/{sessionId} {
+        allow read, create: if hasActiveMembership(orgId);
+        allow update, delete: if isAdminOrOwner(orgId) || (signedIn() && request.resource.data.createdByUserId == request.auth.uid);
+
+        match /messages/{messageId} {
+          allow read, create: if hasActiveMembership(orgId);
+          allow update, delete: if isAdminOrOwner(orgId);
+        }
+      }
+
+      match /auditEvents/{eventId} {
+        allow read: if isAdminOrOwner(orgId);
+        allow create: if hasActiveMembership(orgId);
+        allow update, delete: if false;
+      }
+
+      match /usage/{periodId} {
+        allow read: if isAdminOrOwner(orgId);
+        allow create, update: if isAdminOrOwner(orgId);
+        allow delete: if false;
+      }
+    }
+  }
+}
