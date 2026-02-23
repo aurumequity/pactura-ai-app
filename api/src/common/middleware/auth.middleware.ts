@@ -1,12 +1,11 @@
 import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common'
-import { FastifyRequest, FastifyReply } from 'fastify'
-import { FirebaseService } from '../../services/firebase.service'
+import { FirebaseService } from '../firebase/firebase.service'
 
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
   constructor(private firebaseService: FirebaseService) {}
 
-async use(req: FastifyRequest, res: FastifyReply, next: () => void) {
+  async use(req: any, res: any, next: () => void) {
     const authHeader = req.headers.authorization
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -17,9 +16,11 @@ async use(req: FastifyRequest, res: FastifyReply, next: () => void) {
 
     try {
       const decoded = await this.firebaseService.verifyToken(token)
-      req['user'] = { userId: decoded.uid }
+      req.raw = req.raw || {}
+      req.user = { uid: decoded.uid }
       next()
     } catch (err) {
+      console.error('TOKEN ERROR:', err.message);
       throw new UnauthorizedException('Invalid token')
     }
   }
