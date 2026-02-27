@@ -1,20 +1,21 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-
     function signedIn() { return request.auth != null; }
 
     function membershipDoc(orgId) {
-      return /databases/$(database)/documents/organizations/$(orgId)/memberships/$(request.auth.uid);
+      return /databases/(default)/documents/orgs/$(orgId)/memberships/$(request.auth.uid);
     }
 
     function hasActiveMembership(orgId) {
       return signedIn()
-        && exists(membershipDoc(orgId))
-        && get(membershipDoc(orgId)).data.status == "active";
+        && firestore.exists(membershipDoc(orgId))
+        && firestore.get(membershipDoc(orgId)).data.status == "active";
     }
 
-    function role(orgId) { return get(membershipDoc(orgId)).data.role; }
+    function role(orgId) {
+      return firestore.get(membershipDoc(orgId)).data.role;
+    }
 
     function isAdminOrOwner(orgId) {
       return hasActiveMembership(orgId) && (role(orgId) in ["admin", "owner"]);

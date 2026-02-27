@@ -1,37 +1,103 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, AlertCircle } from "lucide-react";
-import { apiGet } from "@/lib/api";
+import { Upload, FileText, AlertCircle, Loader2 } from "lucide-react";
+import { apiGet, apiPost } from "@/lib/api";
+import { storage } from "@/lib/firebaseClient";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 interface Document {
   id: string;
-  title: string;
+  name: string;
+  fileType: string;
+  storagePath: string;
   status: string;
   createdAt: string;
 }
+
+const ORG_ID = "org-001";
 
 export function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function fetchDocuments() {
+    try {
+      const data = await apiGet<Document[]>(`/orgs/${ORG_ID}/documents`);
+      setDocuments(data);
+    } catch (err: any) {
+      setError("Failed to load documents. Is the API running?");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function fetchDocuments() {
-      try {
-        const data = await apiGet<Document[]>("/orgs/org-001/documents");
-        setDocuments(data);
-      } catch (err: any) {
-        setError("Failed to load documents. Is the API running?");
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchDocuments();
   }, []);
+
+  async function handleUpload(file: File) {
+    if (!file) return;
+    setUploading(true);
+    setUploadProgress(0);
+    setError(null);
+
+    try {
+      // 1. Upload file to Firebase Storage
+      const storagePath = `orgs/${ORG_ID}/docs/${Date.now()}-${file.name}`;
+      const storageRef = ref(storage, storagePath);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      await new Promise<void>((resolve, reject) => {
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const progress = Math.round(
+              (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+            );
+            setUploadProgress(progress);
+          },
+          reject,
+          resolve
+        );
+      });
+
+      // 2. Write metadata to Firestore via API
+      await apiPost(`/orgs/${ORG_ID}/documents`, {
+        name: file.name,
+        fileType: file.type || "application/octet-stream",
+        storagePath,
+      });
+
+      // 3. Refresh the document list
+      await fetchDocuments();
+    } catch (err: any) {
+      setError("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  }
+
+  function onFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleUpload(file);
+    e.target.value = "";
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleUpload(file);
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -45,10 +111,25 @@ export function DocumentsPage() {
             Upload and manage contract documents for AI analysis.
           </p>
         </div>
-        <Button className="bg-accent text-accent-foreground hover:bg-accent/90">
-          <Upload className="size-4" />
-          Upload Document
+        <Button
+          className="bg-accent text-accent-foreground hover:bg-accent/90"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Upload className="size-4" />
+          )}
+          {uploading ? `Uploading ${uploadProgress}%` : "Upload Document"}
         </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept=".pdf,.doc,.docx,.txt"
+          onChange={onFileInputChange}
+        />
       </div>
 
       {/* Error state */}
@@ -77,9 +158,9 @@ export function DocumentsPage() {
                     <FileText className="size-5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">{doc.title}</p>
+                    <p className="text-sm font-medium text-foreground">{doc.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(doc.createdAt).toLocaleDateString()}
+                      {doc.fileType} · {new Date(doc.createdAt ? (doc.createdAt as any)._seconds * 1000 : 0).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -92,9 +173,14 @@ export function DocumentsPage() {
         </div>
       )}
 
-      {/* Empty state */}
+      {/* Empty state with drag and drop */}
       {!loading && !error && documents.length === 0 && (
-        <Card>
+        <Card
+          className={`border-2 border-dashed transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-border"}`}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+        >
           <CardContent className="py-16">
             <div className="flex flex-col items-center justify-center text-center">
               <div className="flex size-16 items-center justify-center rounded-full bg-secondary">
@@ -107,10 +193,17 @@ export function DocumentsPage() {
                 Upload your first contract document to begin AI-powered clause
                 extraction, risk analysis, and compliance review.
               </p>
-              <Button className="mt-6 bg-primary text-primary-foreground hover:bg-primary/90">
+              <Button
+                className="mt-6 bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
                 <Upload className="size-4" />
                 Upload Your First Document
               </Button>
+              <p className="mt-3 text-xs text-muted-foreground">
+                or drag and drop a file here
+              </p>
             </div>
           </CardContent>
         </Card>
