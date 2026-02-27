@@ -8,6 +8,7 @@ export class DocumentsService {
   constructor(private readonly firebase: FirebaseService) {}
 
   private async assertMembership(orgId: string, uid: string) {
+    console.log('assertMembership called with:', { orgId, uid });
     const memberRef = this.firebase.firestore
       .collection('orgs')
       .doc(orgId)
@@ -20,7 +21,11 @@ export class DocumentsService {
     }
   }
 
-  async createDocument(orgId: string, uid: string, name: string): Promise<DocumentRecord> {
+  async createDocument(
+    orgId: string,
+    uid: string,
+    name: string,
+  ): Promise<DocumentRecord> {
     await this.assertMembership(orgId, uid);
 
     const docRef = this.firebase.firestore
@@ -30,7 +35,13 @@ export class DocumentsService {
       .doc();
 
     const now = admin.firestore.FieldValue.serverTimestamp();
-    await docRef.set({ name, status: 'pending', uploadedBy: uid, createdAt: now, updatedAt: now });
+    await docRef.set({
+      name,
+      status: 'pending',
+      uploadedBy: uid,
+      createdAt: now,
+      updatedAt: now,
+    });
 
     const snap = await docRef.get();
     return { id: snap.id, ...snap.data() } as DocumentRecord;
@@ -46,10 +57,14 @@ export class DocumentsService {
       .orderBy('createdAt', 'desc')
       .get();
 
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as DocumentRecord));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DocumentRecord);
   }
 
-  async getDocument(orgId: string, uid: string, docId: string): Promise<DocumentRecord> {
+  async getDocument(
+    orgId: string,
+    uid: string,
+    docId: string,
+  ): Promise<DocumentRecord> {
     await this.assertMembership(orgId, uid);
 
     const snap = await this.firebase.firestore
