@@ -77,12 +77,30 @@ export class DocumentsService {
     docId: string,
   ): Promise<{ success: boolean }> {
     await this.assertMembership(orgId, uid);
-    await this.firebase.firestore
+
+    // 1. Get the document to retrieve storagePath
+    const docRef = this.firebase.firestore
       .collection('orgs')
       .doc(orgId)
       .collection('documents')
-      .doc(docId)
-      .delete();
+      .doc(docId);
+    const snap = await docRef.get();
+    if (!snap.exists) throw new ForbiddenException('Document not found');
+
+    // 2. Delete from Firebase Storage
+    const storagePath = snap.data()?.storagePath;
+    if (storagePath) {
+      try {
+        const bucket = admin.storage().bucket(`${process.env.FIREBASE_PROJECT_ID}.appspot.com`);
+        await bucket.file(storagePath).delete();
+      } catch (err: any) {
+        console.warn('Storage delete failed (file may not exist):', err.message);
+      }
+    }
+
+    // 3. Delete Firestore metadata record
+    await docRef.delete();
+
     return { success: true };
   }
 }
