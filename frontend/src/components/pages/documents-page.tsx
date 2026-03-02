@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, AlertCircle, Loader2, Trash2 } from "lucide-react";
+import { Upload, FileText, AlertCircle, Loader2, Trash2, Sparkles } from "lucide-react";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
 import { storage } from "@/lib/firebaseClient";
 import { ref, uploadBytesResumable } from "firebase/storage";
@@ -18,10 +18,49 @@ interface Document {
   createdAt: { _seconds: number; _nanoseconds: number } | null;
 }
 
+interface ComplianceFlag {
+  label: string;
+  severity: "info" | "warning" | "critical";
+}
+
+interface AnalysisResult {
+  contractType: string;
+  keyParties: string[];
+  complianceFlags: ComplianceFlag[];
+  summary: string;
+}
+
+type AnalysisState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "success"; result: AnalysisResult }
+  | { status: "error"; message: string };
+
 function formatDate(createdAt: Document["createdAt"]) {
   if (!createdAt?._seconds) return "—";
   return new Date(createdAt._seconds * 1000).toLocaleDateString();
 }
+
+const severityConfig = {
+  info: {
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    border: "border-blue-200",
+    dot: "bg-blue-400",
+  },
+  warning: {
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    border: "border-amber-200",
+    dot: "bg-amber-400",
+  },
+  critical: {
+    bg: "bg-red-50",
+    text: "text-red-700",
+    border: "border-red-200",
+    dot: "bg-red-500",
+  },
+};
 
 export function DocumentsPage() {
   const { org } = useAuth();
@@ -34,6 +73,7 @@ export function DocumentsPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragOver, setDragOver] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [analyses, setAnalyses] = useState<Record<string, AnalysisState>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function fetchDocuments() {
@@ -50,6 +90,29 @@ export function DocumentsPage() {
   useEffect(() => {
     fetchDocuments();
   }, [ORG_ID]);
+
+  async function handleAnalyze(docId: string) {
+    // If already analyzed, toggle collapse
+    const current = analyses[docId];
+    if (current?.status === "success") {
+      setAnalyses((prev) => ({ ...prev, [docId]: { status: "idle" } }));
+      return;
+    }
+
+    setAnalyses((prev) => ({ ...prev, [docId]: { status: "loading" } }));
+    try {
+      const result = await apiPost<AnalysisResult>(
+        `/orgs/${ORG_ID}/documents/${docId}/analyze`,
+        {}
+      );
+      setAnalyses((prev) => ({ ...prev, [docId]: { status: "success", result } }));
+    } catch {
+      setAnalyses((prev) => ({
+        ...prev,
+        [docId]: { status: "error", message: "Analysis failed. Please try again." },
+      }));
+    }
+  }
 
   async function handleUpload(file: File) {
     if (!file) return;
@@ -96,6 +159,11 @@ export function DocumentsPage() {
     try {
       await apiDelete(`/orgs/${ORG_ID}/documents/${docId}`);
       setDocuments((prev) => prev.filter((d) => d.id !== docId));
+      setAnalyses((prev) => {
+        const next = { ...prev };
+        delete next[docId];
+        return next;
+      });
     } catch {
       setError("Failed to delete document. Please try again.");
     } finally {
@@ -167,41 +235,170 @@ export function DocumentsPage() {
       {/* Document list */}
       {!loading && !error && documents.length > 0 && (
         <div className="flex flex-col gap-3">
-          {documents.map((doc) => (
-            <Card key={doc.id}>
-              <CardContent className="flex items-center justify-between py-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-lg bg-secondary">
-                    <FileText className="size-5 text-muted-foreground" />
+          {documents.map((doc) => {
+            const analysis = analyses[doc.id] ?? { status: "idle" };
+            const isAnalyzed = analysis.status === "success";
+
+            return (
+              <Card
+                key={doc.id}
+                className={`overflow-hidden transition-all duration-200 ${
+                  isAnalyzed ? "ring-1 ring-[#D4A017]/40 shadow-sm" : ""
+                }`}
+              >
+                {/* Document row */}
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-lg bg-secondary">
+                      <FileText className="size-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{doc.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {doc.fileType} · {formatDate(doc.createdAt)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{doc.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {doc.fileType} · {formatDate(doc.createdAt)}
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground capitalize">
+                      {doc.status}
+                    </span>
+
+                    {/* Analyze button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`h-8 gap-1.5 text-xs font-medium transition-all ${
+                        isAnalyzed
+                          ? "border-[#D4A017]/50 bg-[#D4A017]/5 text-[#D4A017] hover:bg-[#D4A017]/10"
+                          : "border-[#1E2F5C]/20 text-[#1E2F5C] hover:border-[#1E2F5C]/40 hover:bg-[#1E2F5C]/5"
+                      }`}
+                      onClick={() => handleAnalyze(doc.id)}
+                      disabled={analysis.status === "loading"}
+                    >
+                      {analysis.status === "loading" ? (
+                        <Loader2 className="size-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="size-3" />
+                      )}
+                      {analysis.status === "loading"
+                        ? "Analyzing..."
+                        : isAnalyzed
+                        ? "Analyzed"
+                        : "Analyze"}
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                      onClick={() => handleDelete(doc.id)}
+                      disabled={deletingId === doc.id}
+                    >
+                      {deletingId === doc.id ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="size-4" />
+                      )}
+                    </Button>
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground capitalize">
-                    {doc.status}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                    onClick={() => handleDelete(doc.id)}
-                    disabled={deletingId === doc.id}
-                  >
-                    {deletingId === doc.id ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="size-4" />
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+
+                {/* Analysis error */}
+                {analysis.status === "error" && (
+                  <div className="border-t border-red-100 bg-red-50 px-4 py-3 text-xs text-red-600 flex items-center gap-2">
+                    <AlertCircle className="size-3.5 shrink-0" />
+                    {analysis.message}
+                  </div>
+                )}
+
+                {/* Analysis results panel */}
+                {analysis.status === "success" && (
+                  <div className="border-t border-[#D4A017]/20 bg-gradient-to-b from-[#1E2F5C]/[0.03] to-transparent">
+                    {/* Panel header */}
+                    <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+                      <div className="flex items-center justify-center size-5 rounded bg-[#1E2F5C]">
+                        <Sparkles className="size-3 text-[#D4A017]" />
+                      </div>
+                      <span className="text-xs font-semibold text-[#1E2F5C] uppercase tracking-wide">
+                        AI Analysis
+                      </span>
+                      <span className="ml-auto text-[10px] text-muted-foreground">
+                        Pactura Intelligence · V2
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 px-4 pb-4 sm:grid-cols-2">
+                      {/* Contract Type */}
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                          Contract Type
+                        </p>
+                        <p className="text-sm font-medium text-foreground">
+                          {analysis.result.contractType}
+                        </p>
+                      </div>
+
+                      {/* Key Parties */}
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                          Key Parties
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {analysis.result.keyParties.map((party, i) => (
+                            <span
+                              key={i}
+                              className="rounded-md border border-[#1E2F5C]/15 bg-[#1E2F5C]/5 px-2 py-0.5 text-xs text-[#1E2F5C]"
+                            >
+                              {party}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Compliance Flags */}
+                      <div className="sm:col-span-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                          Compliance Flags
+                        </p>
+                        {analysis.result.complianceFlags.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">No flags detected.</p>
+                        ) : (
+                          <div className="flex flex-col gap-1.5">
+                            {analysis.result.complianceFlags.map((flag, i) => {
+                              const cfg = severityConfig[flag.severity];
+                              return (
+                                <div
+                                  key={i}
+                                  className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs ${cfg.bg} ${cfg.border} ${cfg.text}`}
+                                >
+                                  <span className={`size-1.5 rounded-full shrink-0 ${cfg.dot}`} />
+                                  <span>{flag.label}</span>
+                                  <span className="ml-auto font-medium uppercase text-[10px] tracking-wide opacity-70">
+                                    {flag.severity}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Summary */}
+                      <div className="sm:col-span-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                          Summary
+                        </p>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {analysis.result.summary}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
         </div>
       )}
 
