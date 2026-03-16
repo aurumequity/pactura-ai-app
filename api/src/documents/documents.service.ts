@@ -93,10 +93,15 @@ export class DocumentsService {
     const storagePath = snap.data()?.storagePath;
     if (storagePath) {
       try {
-        const bucket = admin.storage().bucket(`${process.env.FIREBASE_PROJECT_ID}.appspot.com`);
+        const bucket = admin
+          .storage()
+          .bucket(process.env.FIREBASE_STORAGE_BUCKET);
         await bucket.file(storagePath).delete();
       } catch (err: any) {
-        console.warn('Storage delete failed (file may not exist):', err.message);
+        console.warn(
+          'Storage delete failed (file may not exist):',
+          err.message,
+        );
       }
     }
 
@@ -106,20 +111,20 @@ export class DocumentsService {
     return { success: true };
   }
   async analyzeDocument(
-  orgId: string,
-  uid: string,
-  docId: string,
-): Promise<AnalysisResult> {
-  await this.assertMembership(orgId, uid);
+    orgId: string,
+    uid: string,
+    docId: string,
+  ): Promise<AnalysisResult> {
+    await this.assertMembership(orgId, uid);
 
-  // Fetch the document record so we have name + fileType
-  const doc = await this.getDocument(orgId, uid, docId);
+    // Fetch the document record so we have name + fileType
+    const doc = await this.getDocument(orgId, uid, docId);
 
-  const client = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-  });
+    const client = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
 
-  const prompt = `You are a federal contract intelligence engine for Pactura, a document governance platform.
+    const prompt = `You are a federal contract intelligence engine for Pactura, a document governance platform.
 
 A user has uploaded a document with the following metadata:
 - File name: "${doc.name}"
@@ -137,23 +142,22 @@ You MUST respond with only a valid JSON object matching this exact shape, no mar
   "summary": "2-3 sentence narrative about this document and its compliance implications"
 }`;
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 1024,
-    messages: [{ role: 'user', content: prompt }],
-  });
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }],
+    });
 
-  // Extract the text content from Claude's response
-  const rawText = message.content
-    .filter((block) => block.type === 'text')
-    .map((block) => (block as { type: 'text'; text: string }).text)
-    .join('');
+    // Extract the text content from Claude's response
+    const rawText = message.content
+      .filter((block) => block.type === 'text')
+      .map((block) => (block as { type: 'text'; text: string }).text)
+      .join('');
 
-  try {
-    return JSON.parse(rawText) as AnalysisResult;
-  } catch {
-    throw new Error('Failed to parse AI analysis response');
+    try {
+      return JSON.parse(rawText) as AnalysisResult;
+    } catch {
+      throw new Error('Failed to parse AI analysis response');
+    }
   }
-}
-  
 }
