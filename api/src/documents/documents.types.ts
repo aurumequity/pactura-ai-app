@@ -1,5 +1,6 @@
 import type { GapCheckResult } from '../gap-check/gap-check.types';
 import type { AuditSummary } from '../audit-summary/audit-summary.types';
+import type { AnomalyReport } from '../anomaly-detect/anomaly-detect.types';
 
 export interface DocumentRecord {
   id: string;
@@ -12,6 +13,7 @@ export interface DocumentRecord {
   updatedAt: FirebaseFirestore.Timestamp;
   complianceGaps?: Record<string, GapCheckResult>;
   auditSummary?: AuditSummary;
+  anomalyReport?: AnomalyReport;
 }
 
 export interface CreateDocumentDto {

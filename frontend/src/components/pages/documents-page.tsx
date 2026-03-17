@@ -10,6 +10,7 @@ import { ref, uploadBytesResumable } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
 import { GapCheckPanel } from "@/components/gap-check-panel";
 import { AuditSummaryPanel } from "@/components/audit-summary-panel";
+import { AnomalyPanel } from "@/components/anomaly-panel";
 
 interface Document {
   id: string;
@@ -20,6 +21,7 @@ interface Document {
   createdAt: { _seconds: number; _nanoseconds: number } | null;
   complianceGaps?: Record<string, any>;
   auditSummary?: any;
+  anomalyReport?: any;
 }
 
 function formatDate(createdAt: Document["createdAt"]) {
@@ -39,7 +41,7 @@ export function DocumentsPage() {
   const [dragOver, setDragOver] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<Record<string, "gap-check" | "audit-summary">>({});
+  const [activeTab, setActiveTab] = useState<Record<string, "gap-check" | "audit-summary" | "anomalies">>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function fetchDocuments() {
@@ -233,39 +235,40 @@ export function DocumentsPage() {
                 <div className="mt-1">
                   {/* Tab switcher */}
                   <div className="flex border-b border-border bg-background rounded-t-lg overflow-hidden">
-                    <button
-                      className={`flex-1 py-2 text-xs font-semibold transition-colors ${
-                        (activeTab[doc.id] ?? "gap-check") === "gap-check"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                      }`}
-                      onClick={() => setActiveTab((prev) => ({ ...prev, [doc.id]: "gap-check" }))}
-                    >
-                      Gap Check
-                    </button>
-                    <button
-                      className={`flex-1 py-2 text-xs font-semibold transition-colors ${
-                        activeTab[doc.id] === "audit-summary"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                      }`}
-                      onClick={() => setActiveTab((prev) => ({ ...prev, [doc.id]: "audit-summary" }))}
-                    >
-                      Audit Summary
-                    </button>
+                    {(["gap-check", "audit-summary", "anomalies"] as const).map((tab) => (
+                      <button
+                        key={tab}
+                        className={`flex-1 py-2 text-xs font-semibold transition-colors ${
+                          (activeTab[doc.id] ?? "gap-check") === tab
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                        }`}
+                        onClick={() => setActiveTab((prev) => ({ ...prev, [doc.id]: tab }))}
+                      >
+                        {tab === "gap-check" ? "Gap Check" : tab === "audit-summary" ? "Audit Summary" : "Anomalies"}
+                      </button>
+                    ))}
                   </div>
 
-                  {(activeTab[doc.id] ?? "gap-check") === "gap-check" ? (
+                  {(activeTab[doc.id] ?? "gap-check") === "gap-check" && (
                     <GapCheckPanel
                       orgId={ORG_ID}
                       docId={doc.id}
                       savedGaps={doc.complianceGaps}
                     />
-                  ) : (
+                  )}
+                  {activeTab[doc.id] === "audit-summary" && (
                     <AuditSummaryPanel
                       orgId={ORG_ID}
                       docId={doc.id}
                       savedSummary={doc.auditSummary}
+                    />
+                  )}
+                  {activeTab[doc.id] === "anomalies" && (
+                    <AnomalyPanel
+                      orgId={ORG_ID}
+                      docId={doc.id}
+                      savedReport={doc.anomalyReport}
                     />
                   )}
                 </div>
