@@ -6,11 +6,11 @@ export class FirebaseService {
   constructor() {
     const useEmulator = process.env.FIREBASE_EMULATOR === 'true';
 
-    if (useEmulator) {
-      process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
-      process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080';
-      process.env.FIREBASE_STORAGE_EMULATOR_HOST = 'localhost:9199';
-    }
+    // if (useEmulator) {
+    //   process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
+    //   process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080';
+    //   process.env.FIREBASE_STORAGE_EMULATOR_HOST = 'localhost:9199';
+    // }
 
     if (!admin.apps.length) {
       if (useEmulator) {

@@ -62,11 +62,9 @@ export class GapCheckService {
     }
 
     // Download PDF from Storage as buffer
-    const bucket = admin
-      .storage()
-      .bucket(`${process.env.FIREBASE_PROJECT_ID}.appspot.com`);
-
-    const [buffer] = await bucket.file(storagePath).download();
+const bucket = admin
+  .storage()
+  .bucket(process.env.FIREBASE_STORAGE_BUCKET);    const [buffer] = await bucket.file(storagePath).download();
     const base64Pdf = buffer.toString('base64');
 
     // Call Claude with PDF as base64 document block
