@@ -9,6 +9,7 @@ import { storage } from "@/lib/firebaseClient";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
 import { GapCheckPanel } from "@/components/gap-check-panel";
+import { AuditSummaryPanel } from "@/components/audit-summary-panel";
 
 interface Document {
   id: string;
@@ -18,7 +19,9 @@ interface Document {
   status: string;
   createdAt: { _seconds: number; _nanoseconds: number } | null;
   complianceGaps?: Record<string, any>;
+  auditSummary?: any;
 }
+
 function formatDate(createdAt: Document["createdAt"]) {
   if (!createdAt?._seconds) return "—";
   return new Date(createdAt._seconds * 1000).toLocaleDateString();
@@ -36,6 +39,7 @@ export function DocumentsPage() {
   const [dragOver, setDragOver] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Record<string, "gap-check" | "audit-summary">>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function fetchDocuments() {
@@ -204,7 +208,7 @@ export function DocumentsPage() {
                       ) : (
                         <>
                           <ChevronDown className="size-3.5" />
-                          Gap Check
+                          Analyze
                         </>
                       )}
                     </Button>
@@ -226,11 +230,45 @@ export function DocumentsPage() {
               </Card>
 
               {expandedDocId === doc.id && (
-                <GapCheckPanel
-                  orgId={ORG_ID}
-                  docId={doc.id}
-                  savedGaps={doc.complianceGaps}
-                />
+                <div className="mt-1">
+                  {/* Tab switcher */}
+                  <div className="flex border-b border-border bg-background rounded-t-lg overflow-hidden">
+                    <button
+                      className={`flex-1 py-2 text-xs font-semibold transition-colors ${
+                        (activeTab[doc.id] ?? "gap-check") === "gap-check"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      }`}
+                      onClick={() => setActiveTab((prev) => ({ ...prev, [doc.id]: "gap-check" }))}
+                    >
+                      Gap Check
+                    </button>
+                    <button
+                      className={`flex-1 py-2 text-xs font-semibold transition-colors ${
+                        activeTab[doc.id] === "audit-summary"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      }`}
+                      onClick={() => setActiveTab((prev) => ({ ...prev, [doc.id]: "audit-summary" }))}
+                    >
+                      Audit Summary
+                    </button>
+                  </div>
+
+                  {(activeTab[doc.id] ?? "gap-check") === "gap-check" ? (
+                    <GapCheckPanel
+                      orgId={ORG_ID}
+                      docId={doc.id}
+                      savedGaps={doc.complianceGaps}
+                    />
+                  ) : (
+                    <AuditSummaryPanel
+                      orgId={ORG_ID}
+                      docId={doc.id}
+                      savedSummary={doc.auditSummary}
+                    />
+                  )}
+                </div>
               )}
             </div>
           ))}

@@ -11,11 +11,12 @@ import { WhoAmIModule } from './modules/whoami/whoami.module';
 import { OrgsModule } from './modules/orgs/orgs.module';
 import { DocumentsModule } from './documents/documents.module';
 import { GapCheckModule } from './gap-check/gap-check.module';
+import { AuditSummaryModule } from './audit-summary/audit-summary.module';
 import { FirebaseService } from './common/firebase/firebase.service';
 
 @Module({
   controllers: [HealthController],
-  imports: [FirebaseModule, WhoAmIModule, OrgsModule, DocumentsModule, GapCheckModule],
+  imports: [FirebaseModule, WhoAmIModule, OrgsModule, DocumentsModule, GapCheckModule, AuditSummaryModule],
   providers: [FirebaseService],
 })
 export class AppModule implements NestModule {

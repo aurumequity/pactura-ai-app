@@ -1,4 +1,5 @@
 import type { GapCheckResult } from '../gap-check/gap-check.types';
+import type { AuditSummary } from '../audit-summary/audit-summary.types';
 
 export interface DocumentRecord {
   id: string;
@@ -10,6 +11,7 @@ export interface DocumentRecord {
   createdAt: FirebaseFirestore.Timestamp;
   updatedAt: FirebaseFirestore.Timestamp;
   complianceGaps?: Record<string, GapCheckResult>;
+  auditSummary?: AuditSummary;
 }
 
 export interface CreateDocumentDto {
