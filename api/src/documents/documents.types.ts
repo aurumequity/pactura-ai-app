@@ -1,3 +1,5 @@
+import type { GapCheckResult } from '../gap-check/gap-check.types';
+
 export interface DocumentRecord {
   id: string;
   name: string;
@@ -7,6 +9,7 @@ export interface DocumentRecord {
   uploadedBy: string;
   createdAt: FirebaseFirestore.Timestamp;
   updatedAt: FirebaseFirestore.Timestamp;
+  complianceGaps?: Record<string, GapCheckResult>;
 }
 
 export interface CreateDocumentDto {
@@ -15,12 +18,14 @@ export interface CreateDocumentDto {
   storagePath: string;
 }
 
+export interface ComplianceFlag {
+  label: string;
+  severity: 'info' | 'warning' | 'critical';
+}
+
 export interface AnalysisResult {
   contractType: string;
   keyParties: string[];
-  complianceFlags: {
-    label: string;
-    severity: 'info' | 'warning' | 'critical';
-  }[];
+  complianceFlags: ComplianceFlag[];
   summary: string;
 }
