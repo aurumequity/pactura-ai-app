@@ -15,20 +15,25 @@ interface Org {
 interface AuthContextType {
   user: User | null;
   org: Org | null;
+  orgs: Org[];
   loading: boolean;
   logout: () => Promise<void>;
+  switchOrg: (org: Org) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   org: null,
+  orgs: [],
   loading: true,
   logout: async () => {},
+  switchOrg: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [org, setOrg] = useState<Org | null>(null);
+  const [orgs, setOrgs] = useState<Org[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -38,12 +43,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (firebaseUser) {
         try {
-          const orgs = await apiGet<Org[]>("/orgs");
-          setOrg(orgs[0] ?? null); // Use first org for now
+          const fetchedOrgs = await apiGet<Org[]>("/orgs");
+          setOrgs(fetchedOrgs);
+          setOrg(fetchedOrgs[0] ?? null);
         } catch {
+          setOrgs([]);
           setOrg(null);
         }
       } else {
+        setOrgs([]);
         setOrg(null);
       }
 
@@ -56,11 +64,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function logout() {
     await signOut(auth);
     setOrg(null);
+    setOrgs([]);
     router.push("/sign-in");
   }
 
+  function switchOrg(newOrg: Org) {
+    setOrg(newOrg);
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, org, logout }}>
+    <AuthContext.Provider value={{ user, loading, org, orgs, logout, switchOrg }}>
       {children}
     </AuthContext.Provider>
   );
