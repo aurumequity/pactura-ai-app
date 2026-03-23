@@ -44,3 +44,8 @@ Thumbs.db
 /scripts/
 
 # API dist folder
+/api/.env
+api/service-account.json
+
+#CORS
+cors.json

@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, AlertCircle, Loader2, Trash2 } from "lucide-react";
+import { Upload, FileText, AlertCircle, Loader2 } from "lucide-react";
+import { DocumentCard } from "@/components/document-card";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
 import { storage } from "@/lib/firebaseClient";
 import { ref, uploadBytesResumable } from "firebase/storage";
@@ -16,12 +17,11 @@ interface Document {
   storagePath: string;
   status: string;
   createdAt: { _seconds: number; _nanoseconds: number } | null;
+  version: number;
+  previousVersionId?: string;
+  isLatestVersion: boolean;
 }
 
-function formatDate(createdAt: Document["createdAt"]) {
-  if (!createdAt?._seconds) return "—";
-  return new Date(createdAt._seconds * 1000).toLocaleDateString();
-}
 
 export function DocumentsPage() {
   const { org } = useAuth();
@@ -168,39 +168,12 @@ export function DocumentsPage() {
       {!loading && !error && documents.length > 0 && (
         <div className="flex flex-col gap-3">
           {documents.map((doc) => (
-            <Card key={doc.id}>
-              <CardContent className="flex items-center justify-between py-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-lg bg-secondary">
-                    <FileText className="size-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{doc.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {doc.fileType} · {formatDate(doc.createdAt)}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground capitalize">
-                    {doc.status}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                    onClick={() => handleDelete(doc.id)}
-                    disabled={deletingId === doc.id}
-                  >
-                    {deletingId === doc.id ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="size-4" />
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <DocumentCard
+              key={doc.id}
+              doc={doc}
+              deletingId={deletingId}
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       )}
