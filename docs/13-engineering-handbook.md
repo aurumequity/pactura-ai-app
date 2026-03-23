@@ -431,6 +431,13 @@ Why
 Token issuer and token verifier must align, otherwise verification fails.
 
 ---
+### Problem with corrupted cache and Turbopack errors
+
+Fix: Whenever Turbopack panics — always rm -rf .next first before any other debugging. 90% of the time that's the fix.
+
+cd frontend
+rm -rf .next
+npm run dev
 
 ## 12. Organization Resolution
 

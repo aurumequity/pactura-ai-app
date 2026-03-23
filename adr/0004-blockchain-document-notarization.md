@@ -1,7 +1,7 @@
 # ADR 0004: Blockchain-Based Document Notarization for External Verifiability
 
 ## Status
-Proposed
+Proposed -> Under Evaluation
 
 ## Date
 2026-02-17
@@ -19,10 +19,22 @@ We will implement an "Anchor-to-Chain" notarization strategy.
 3. **Immutable Receipt**: The resulting Transaction ID (TxID) will be stored in the `Document` metadata as a "Notary Receipt".
 4. **External Verification**: Users can verify the integrity of a document by re-hashing the file and comparing it to the hash anchored on the public ledger via a block explorer.
 
+## Implementation Roadmap
+- Phase 1 (Current): Internal Firestore audit trail with 
+  serverTimestamp — satisfies basic AU-10 requirements
+- Phase 2 (Planned): Blockchain anchoring layer added 
+  post-pilot as external verifiability upgrade
+
 ## Technical Implementation Details
-- **Provider**: Alchemy/Infura via Ethers.js.
-- **Storage**: The `blockchainTxId` and `contentHash` will be added to the Prisma schema.
-- **Security**: Private keys for the notary wallet must be stored in GCP Secret Manager, not in application environment variables.
+- **Provider**: Alchemy/Infura via Ethers.js
+- **Chain Candidates**: Arbitrum One, Polygon, or Base — 
+  final selection pending cost/latency benchmarking
+- **Storage**: The `blockchainTxId` and `contentHash` 
+  will be added to the document record in Firestore 
+  (replacing Prisma reference — stack uses Firebase)
+- **Security**: Private keys for the notary wallet must 
+  be stored in GCP Secret Manager, not in application 
+  environment variables.
 
 ## Consequences
 ### Positive
@@ -36,3 +48,5 @@ We will implement an "Anchor-to-Chain" notarization strategy.
 
 ## Compliance Mapping
 - **NIST 800-53**: AC-4 (Information Flow), AU-10 (Non-repudiation), SI-7 (Software/Information Integrity).
+- **CMMC Level 2**: AU.3.045 (Audit record review), 
+  AU.3.046 (Alert on audit failure)

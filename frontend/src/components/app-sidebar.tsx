@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, FileText, Settings, LogOut, ShieldCheck, Building2 } from "lucide-react"
+import { useState } from "react"
+import { LayoutDashboard, FileText, Settings, LogOut, ShieldCheck, Building2, ChevronDown, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -16,7 +17,8 @@ const navItems = [
 
 export function AppSidebar() {
   const pathname = usePathname()
-  const { logout, org } = useAuth()
+  const { logout, org, orgs, switchOrg } = useAuth()
+  const [switcherOpen, setSwitcherOpen] = useState(false)
 
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
@@ -37,18 +39,58 @@ export function AppSidebar() {
 
       <Separator className="bg-sidebar-border" />
 
-      {/* Org context */}
+      {/* Org switcher */}
       {org && (
-        <div className="flex items-center gap-2 px-6 py-3">
-          <Building2 className="size-4 shrink-0 text-sidebar-foreground/50" />
-          <div className="flex flex-col min-w-0">
-            <span className="truncate text-xs font-medium text-sidebar-accent-foreground">
-              {org.name}
-            </span>
-            <span className="text-xs text-sidebar-foreground/50 capitalize">
-              {org.role}
-            </span>
-          </div>
+        <div className="relative px-3 py-2">
+          <button
+            onClick={() => setSwitcherOpen((prev) => !prev)}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors hover:bg-sidebar-accent/60"
+          >
+            <Building2 className="size-4 shrink-0 text-sidebar-foreground/50" />
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="truncate text-xs font-medium text-sidebar-accent-foreground">
+                {org.name}
+              </span>
+              <span className="text-xs text-sidebar-foreground/50 capitalize">
+                {org.role}
+              </span>
+            </div>
+            {orgs.length > 1 && (
+              <ChevronDown
+                className={cn(
+                  "size-3.5 shrink-0 text-sidebar-foreground/40 transition-transform",
+                  switcherOpen && "rotate-180"
+                )}
+              />
+            )}
+          </button>
+
+          {/* Dropdown */}
+          {switcherOpen && orgs.length > 1 && (
+            <div className="absolute left-3 right-3 top-full z-50 mt-1 rounded-md border border-sidebar-border bg-sidebar shadow-lg">
+              {orgs.map((o) => (
+                <button
+                  key={o.id}
+                  onClick={() => {
+                    switchOrg(o);
+                    setSwitcherOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs transition-colors hover:bg-sidebar-accent/60 first:rounded-t-md last:rounded-b-md"
+                >
+                  <Building2 className="size-3.5 shrink-0 text-sidebar-foreground/40" />
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="truncate font-medium text-sidebar-accent-foreground">
+                      {o.name}
+                    </span>
+                    <span className="text-sidebar-foreground/50 capitalize">{o.role}</span>
+                  </div>
+                  {o.id === org.id && (
+                    <Check className="size-3.5 shrink-0 text-accent" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -62,6 +104,7 @@ export function AppSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => setSwitcherOpen(false)}
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive

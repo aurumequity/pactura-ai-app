@@ -19,7 +19,7 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 
-if (process.env.NODE_ENV === "development") {
+if (process.env.NEXT_PUBLIC_USE_EMULATOR === "true") {
   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
   connectStorageEmulator(storage, "127.0.0.1", 9199);
 }
