@@ -1,9 +1,9 @@
 {
   "name": "pactura",
   "private": true,
-  "scripts": {
-    "emulators": "firebase emulators:start --only auth,firestore,storage,ui",
-    "emulators:wait": "wait-on tcp:127.0.0.1:9099 tcp:127.0.0.1:8080 tcp:127.0.0.1:9199",
+"scripts": {
+    "clean:logs": "rm -f firebase-debug*.log firestore-debug.log ui-debug.log",
+    "emulators": "npm run clean:logs && firebase emulators:start --only auth,firestore,storage,ui",    "emulators:wait": "wait-on tcp:127.0.0.1:9099 tcp:127.0.0.1:8080 tcp:127.0.0.1:9199",
     "api:dev": "cd api && npm run start:dev",
     "web:dev": "cd frontend && npm run dev",
     "dev": "concurrently -k -n EMU,WEB,API -c auto \"npm run emulators\" \"npm run web:dev\" \"npm run emulators:wait && cd api && npm run start:dev\"",
@@ -13,5 +13,8 @@
   "devDependencies": {
     "concurrently": "^9.0.0",
     "wait-on": "^9.0.4"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0"
   }
 }

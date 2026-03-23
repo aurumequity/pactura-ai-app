@@ -9,6 +9,9 @@ import { apiGet, apiPost, apiDelete } from "@/lib/api";
 import { storage } from "@/lib/firebaseClient";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
+import { GapCheckPanel } from "@/components/gap-check-panel";
+import { AuditSummaryPanel } from "@/components/audit-summary-panel";
+import { AnomalyPanel } from "@/components/anomaly-panel";
 
 interface Document {
   id: string;
@@ -34,6 +37,8 @@ export function DocumentsPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragOver, setDragOver] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Record<string, "gap-check" | "audit-summary" | "anomalies">>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function fetchDocuments() {

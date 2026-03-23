@@ -16,8 +16,10 @@ export class AuthMiddleware implements NestMiddleware {
 
     try {
       const decoded = await this.firebaseService.verifyToken(token)
+      const user = { uid: decoded.uid, email: decoded.email ?? '' }
       req.raw = req.raw || {}
-      req.user = { uid: decoded.uid }
+      req.raw.user = user
+      req.user = user
       next()
     } catch (err) {
       console.error('TOKEN ERROR:', err.message);

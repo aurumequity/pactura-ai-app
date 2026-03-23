@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   turbopack: {
     resolveAlias: {
-      tailwindcss: './node_modules/tailwindcss',
+      tailwindcss: path.resolve(__dirname, "node_modules/tailwindcss"),
     },
   },
 };
