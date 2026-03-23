@@ -36,7 +36,7 @@ export function RbacMiddleware(requiredAction: Action) {
       const memberSnap = await this.firebase.firestore
         .collection('orgs')
         .doc(orgId)
-        .collection('members')
+        .collection('memberships')
         .doc(uid)
         .get();
 

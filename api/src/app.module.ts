@@ -13,11 +13,12 @@ import { DocumentsModule } from './documents/documents.module';
 import { GapCheckModule } from './gap-check/gap-check.module';
 import { AuditSummaryModule } from './audit-summary/audit-summary.module';
 import { AnomalyDetectModule } from './anomaly-detect/anomaly-detect.module';
+import { RemediationsModule } from './modules/remediations/remediations.module';
 import { FirebaseService } from './common/firebase/firebase.service';
 
 @Module({
   controllers: [HealthController],
-  imports: [FirebaseModule, WhoAmIModule, OrgsModule, DocumentsModule, GapCheckModule, AuditSummaryModule, AnomalyDetectModule],
+  imports: [FirebaseModule, WhoAmIModule, OrgsModule, DocumentsModule, GapCheckModule, AuditSummaryModule, AnomalyDetectModule, RemediationsModule],
   providers: [FirebaseService],
 })
 export class AppModule implements NestModule {
