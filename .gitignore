@@ -45,15 +45,7 @@ Thumbs.db
 
 # API dist folder
 /api/.env
+api/service-account.json
 
-# Firebase emulator data (optional, if you want to keep emulator state out of version control)
-/emulator-data/
-
-# Service account keys
-service-account.json
-
-# CORS configuration (if you have a custom CORS config file)
+#CORS
 cors.json
-
-# Ignore package-lock.json if we are using npm, but keep it if we are using pnpm
-package-lock.json

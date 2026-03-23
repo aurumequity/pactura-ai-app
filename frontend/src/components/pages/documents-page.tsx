@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, AlertCircle, Loader2, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Upload, FileText, AlertCircle, Loader2 } from "lucide-react";
+import { DocumentCard } from "@/components/document-card";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
 import { storage } from "@/lib/firebaseClient";
 import { ref, uploadBytesResumable } from "firebase/storage";
@@ -19,15 +20,11 @@ interface Document {
   storagePath: string;
   status: string;
   createdAt: { _seconds: number; _nanoseconds: number } | null;
-  complianceGaps?: Record<string, any>;
-  auditSummary?: any;
-  anomalyReport?: any;
+  version: number;
+  previousVersionId?: string;
+  isLatestVersion: boolean;
 }
 
-function formatDate(createdAt: Document["createdAt"]) {
-  if (!createdAt?._seconds) return "—";
-  return new Date(createdAt._seconds * 1000).toLocaleDateString();
-}
 
 export function DocumentsPage() {
   const { org } = useAuth();
@@ -176,104 +173,12 @@ export function DocumentsPage() {
       {!loading && !error && documents.length > 0 && (
         <div className="flex flex-col gap-3">
           {documents.map((doc) => (
-            <div key={doc.id} className="flex flex-col">
-              <Card>
-                <CardContent className="flex items-center justify-between py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-lg bg-secondary">
-                      <FileText className="size-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{doc.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {doc.fileType} · {formatDate(doc.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground capitalize">
-                      {doc.status}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs text-muted-foreground hover:text-foreground gap-1"
-                      onClick={() =>
-                        setExpandedDocId((prev) => (prev === doc.id ? null : doc.id))
-                      }
-                    >
-                      {expandedDocId === doc.id ? (
-                        <>
-                          <ChevronUp className="size-3.5" />
-                          Hide
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="size-3.5" />
-                          Analyze
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                      onClick={() => handleDelete(doc.id)}
-                      disabled={deletingId === doc.id}
-                    >
-                      {deletingId === doc.id ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="size-4" />
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {expandedDocId === doc.id && (
-                <div className="mt-1">
-                  {/* Tab switcher */}
-                  <div className="flex border-b border-border bg-background rounded-t-lg overflow-hidden">
-                    {(["gap-check", "audit-summary", "anomalies"] as const).map((tab) => (
-                      <button
-                        key={tab}
-                        className={`flex-1 py-2 text-xs font-semibold transition-colors ${
-                          (activeTab[doc.id] ?? "gap-check") === tab
-                            ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                        }`}
-                        onClick={() => setActiveTab((prev) => ({ ...prev, [doc.id]: tab }))}
-                      >
-                        {tab === "gap-check" ? "Gap Check" : tab === "audit-summary" ? "Audit Summary" : "Anomalies"}
-                      </button>
-                    ))}
-                  </div>
-
-                  {(activeTab[doc.id] ?? "gap-check") === "gap-check" && (
-                    <GapCheckPanel
-                      orgId={ORG_ID}
-                      docId={doc.id}
-                      savedGaps={doc.complianceGaps}
-                    />
-                  )}
-                  {activeTab[doc.id] === "audit-summary" && (
-                    <AuditSummaryPanel
-                      orgId={ORG_ID}
-                      docId={doc.id}
-                      savedSummary={doc.auditSummary}
-                    />
-                  )}
-                  {activeTab[doc.id] === "anomalies" && (
-                    <AnomalyPanel
-                      orgId={ORG_ID}
-                      docId={doc.id}
-                      savedReport={doc.anomalyReport}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
+            <DocumentCard
+              key={doc.id}
+              doc={doc}
+              deletingId={deletingId}
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       )}
