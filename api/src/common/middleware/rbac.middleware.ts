@@ -20,7 +20,7 @@ import { Role, canPerform } from '../rbac/matrix';
 export function RbacMiddleware(requiredAction: Action) {
   @Injectable()
   class RbacCheck implements NestMiddleware {
-    constructor(private readonly firebase: FirebaseService) {}
+    constructor(public readonly firebase: FirebaseService) {}
 
     async use(req: any, _res: any, next: () => void) {
       const uid: string | undefined = (req.raw as any)?.user?.uid;

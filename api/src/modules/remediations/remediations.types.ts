@@ -23,7 +23,7 @@ export interface Remediation {
 }
 
 // POST /orgs/:orgId/remediations
-export interface CreateRemediationDto {
+export class CreateRemediationDto {
   documentId: string;
   sourceGap: string;
   framework: FrameworkKey;
@@ -37,7 +37,7 @@ export interface CreateRemediationDto {
 }
 
 // PATCH /orgs/:orgId/remediations/:remediationId
-export interface UpdateRemediationDto {
+export class UpdateRemediationDto {
   status?: RemediationStatus;
   assigneeId?: string;
   assigneeEmail?: string;
@@ -45,7 +45,7 @@ export interface UpdateRemediationDto {
 }
 
 // POST /orgs/:orgId/documents/:docId/remediations/bulk-create
-export interface BulkCreateRemediationsDto {
+export class BulkCreateRemediationsDto {
   framework: FrameworkKey;
   gaps: GapItem[];
   defaultAssigneeId: string;
@@ -54,7 +54,7 @@ export interface BulkCreateRemediationsDto {
 }
 
 // Query params for GET /orgs/:orgId/remediations
-export interface ListRemediationsQuery {
+export class ListRemediationsQuery {
   status?: RemediationStatus;
   framework?: FrameworkKey;
   documentId?: string;
