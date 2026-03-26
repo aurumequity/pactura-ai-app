@@ -174,9 +174,21 @@ You MUST respond with only a valid JSON object matching this exact shape, no mar
       .map((block) => (block as { type: 'text'; text: string }).text)
       .join('');
 
+    const auditBase = {
+      userId: uid,
+      orgId,
+      documentId: docId,
+      action: AuditEvents.DOCUMENT_ANALYZED,
+      modelUsed: message.model,
+      tokensUsed: message.usage.input_tokens + message.usage.output_tokens,
+    };
+
     try {
-      return JSON.parse(rawText) as AnalysisResult;
+      const result = JSON.parse(rawText) as AnalysisResult;
+      await this.auditService.logToDocument({ ...auditBase, responseStatus: 'success' });
+      return result;
     } catch {
+      void this.auditService.logToDocument({ ...auditBase, responseStatus: 'error' });
       throw new Error('Failed to parse AI analysis response');
     }
   }

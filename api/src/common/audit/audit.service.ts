@@ -13,6 +13,16 @@ export interface LogAuditParams {
   resultSnapshot?: Record<string, unknown>;
 }
 
+export interface LogDocumentAuditParams {
+  userId: string;
+  orgId: string;
+  documentId: string;
+  action: AuditEvent;
+  modelUsed: string;
+  tokensUsed: number;
+  responseStatus: 'success' | 'error';
+}
+
 @Injectable()
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
@@ -51,6 +61,34 @@ export class AuditService {
     } catch (err) {
       // Audit failures must never crash the request — log and continue.
       this.logger.error(`Failed to write audit log [${eventType}]`, err);
+    }
+  }
+
+  async logToDocument(params: LogDocumentAuditParams): Promise<void> {
+    const { userId, orgId, documentId, action, modelUsed, tokensUsed, responseStatus } = params;
+
+    const entry = {
+      userId,
+      orgId,
+      documentId,
+      action,
+      modelUsed,
+      tokensUsed,
+      responseStatus,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    try {
+      await this.firebase.firestore
+        .collection('orgs')
+        .doc(orgId)
+        .collection('documents')
+        .doc(documentId)
+        .collection('auditLogs')
+        .add(entry);
+    } catch (err) {
+      // Audit failures must never crash the request — log and continue.
+      this.logger.error(`Failed to write document audit log [${action}]`, err);
     }
   }
 }
