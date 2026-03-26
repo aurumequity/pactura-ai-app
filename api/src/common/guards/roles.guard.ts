@@ -94,7 +94,7 @@ export class RolesGuard implements CanActivate {
     }
 
     // Attach role so controllers/services can read it without a second Firestore fetch
-    request.user.role = role;
+    request.user = { ...request.user, role };
 
     return true;
   }
