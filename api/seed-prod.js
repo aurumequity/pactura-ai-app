@@ -29,7 +29,7 @@ async function seed() {
     await db.collection('orgs').doc(org.id)
       .collection('memberships').doc(UID).set({
         status: 'active',
-        role: 'admin',
+        role: 'org_admin',
         joinedAt: '2026-01-01T00:00:00Z',
       });
     console.log(`✅ ${org.name}`);

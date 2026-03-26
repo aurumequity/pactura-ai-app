@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, ChevronDown, ChevronUp, Loader2, Trash2 } from "lucide-react";
+import { FileText, ChevronDown, ChevronUp, Loader2, Trash2, Sparkles } from "lucide-react";
 
 type Tab = "gap-check" | "audit-summary" | "anomalies" | "version-history";
 
@@ -35,6 +35,10 @@ interface Document {
 
 interface DocumentCardProps {
   doc: Document;
+  orgId: string;
+  isAuditor: boolean;
+  analyzingId: string | null;
+  onAnalyze: (id: string) => void;
   deletingId: string | null;
   onDelete: (id: string) => void;
 }
@@ -44,7 +48,7 @@ function formatDate(createdAt: Document["createdAt"]) {
   return new Date(createdAt._seconds * 1000).toLocaleDateString();
 }
 
-export function DocumentCard({ doc, deletingId, onDelete }: DocumentCardProps) {
+export function DocumentCard({ doc, orgId: _orgId, isAuditor, analyzingId, onAnalyze, deletingId, onDelete }: DocumentCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("gap-check");
 
@@ -84,6 +88,21 @@ export function DocumentCard({ doc, deletingId, onDelete }: DocumentCardProps) {
           <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground capitalize">
             {doc.status}
           </span>
+          {!isAuditor && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 text-muted-foreground hover:text-[#1E2F5C] hover:bg-[#1E2F5C]/10"
+              onClick={() => onAnalyze(doc.id)}
+              disabled={analyzingId === doc.id}
+              title="Run AI analysis"
+            >
+              {analyzingId === doc.id
+                ? <Loader2 className="size-4 animate-spin" />
+                : <Sparkles className="size-4" />
+              }
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"

@@ -30,6 +30,8 @@ export function DocumentsPage() {
   const { org } = useAuth();
   const ORG_ID = org?.id ?? "org-001";
 
+  const isAuditor = org?.role === "auditor";
+
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +39,7 @@ export function DocumentsPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragOver, setDragOver] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Record<string, "gap-check" | "audit-summary" | "anomalies">>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -93,6 +96,18 @@ export function DocumentsPage() {
     } finally {
       setUploading(false);
       setUploadProgress(0);
+    }
+  }
+
+  async function handleAnalyze(docId: string) {
+    setAnalyzingId(docId);
+    setError(null);
+    try {
+      await apiPost(`/orgs/${ORG_ID}/documents/${docId}/analyze`, {});
+    } catch {
+      setError("Analysis failed. Please try again.");
+    } finally {
+      setAnalyzingId(null);
     }
   }
 
@@ -176,6 +191,10 @@ export function DocumentsPage() {
             <DocumentCard
               key={doc.id}
               doc={doc}
+              orgId={ORG_ID}
+              isAuditor={isAuditor}
+              analyzingId={analyzingId}
+              onAnalyze={handleAnalyze}
               deletingId={deletingId}
               onDelete={handleDelete}
             />
