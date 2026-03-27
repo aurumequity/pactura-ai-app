@@ -8,6 +8,8 @@ import {
 import * as admin from 'firebase-admin';
 import Anthropic from '@anthropic-ai/sdk';
 import { FirebaseService } from '../common/firebase/firebase.service';
+import { AuditService } from '../common/audit/audit.service';
+import { AuditEvents } from '../common/audit/audit-events';
 import { buildPrompt, VALID_FRAMEWORKS, type FrameworkKey } from './framework-prompts';
 import type { GapCheckDto, GapItem } from './gap-check.types';
 
@@ -15,7 +17,10 @@ import type { GapCheckDto, GapItem } from './gap-check.types';
 export class GapCheckService {
   private readonly anthropic = new Anthropic();
 
-  constructor(private readonly firebase: FirebaseService) {}
+  constructor(
+    private readonly firebase: FirebaseService,
+    private readonly auditService: AuditService,
+  ) {}
 
   private async assertMembership(orgId: string, uid: string) {
     const memberRef = this.firebase.firestore
@@ -116,6 +121,17 @@ const bucket = admin
         runAt: admin.firestore.FieldValue.serverTimestamp(),
         gaps,
       },
+    });
+
+    void this.auditService.logToDocument({
+      userId: uid,
+      orgId,
+      documentId: docId,
+      action: AuditEvents.GAP_CHECK_RUN,
+      modelUsed: 'claude-sonnet-4-20250514',
+      tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
+      responseStatus: 'success',
+      metadata: { framework: dto.framework },
     });
 
     return { framework: dto.framework, gaps };

@@ -5,13 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, AlertCircle, Loader2 } from "lucide-react";
 import { DocumentCard } from "@/components/document-card";
-import { apiGet, apiPost, apiDelete } from "@/lib/api";
+import { apiGet, apiDelete } from "@/lib/api";
 import { storage } from "@/lib/firebaseClient";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
-import { GapCheckPanel } from "@/components/gap-check-panel";
-import { AuditSummaryPanel } from "@/components/audit-summary-panel";
-import { AnomalyPanel } from "@/components/anomaly-panel";
 
 interface Document {
   id: string;
@@ -23,13 +20,16 @@ interface Document {
   version: number;
   previousVersionId?: string;
   isLatestVersion: boolean;
+  complianceGaps?: Record<string, unknown> | null;
+  anomalyReport?: unknown | null;
+  auditSummary?: unknown | null;
 }
+
 
 
 export function DocumentsPage() {
   const { org } = useAuth();
   const ORG_ID = org?.id ?? "org-001";
-
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +37,7 @@ export function DocumentsPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragOver, setDragOver] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<Record<string, "gap-check" | "audit-summary" | "anomalies">>({});
+  const [openChatDocId, setOpenChatDocId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function fetchDocuments() {
@@ -156,8 +155,8 @@ export function DocumentsPage() {
 
       {/* Error */}
       {error && (
-        <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <AlertCircle className="size-4 shrink-0" />
+        <div role="alert" className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
           {error}
         </div>
       )}
@@ -178,6 +177,10 @@ export function DocumentsPage() {
               doc={doc}
               deletingId={deletingId}
               onDelete={handleDelete}
+              orgId={ORG_ID}
+              isChatOpen={openChatDocId === doc.id}
+              onChatOpen={() => setOpenChatDocId(doc.id)}
+              onChatClose={() => setOpenChatDocId(null)}
             />
           ))}
         </div>

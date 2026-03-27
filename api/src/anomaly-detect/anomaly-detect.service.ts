@@ -8,13 +8,18 @@ import {
 import * as admin from 'firebase-admin';
 import Anthropic from '@anthropic-ai/sdk';
 import { FirebaseService } from '../common/firebase/firebase.service';
+import { AuditService } from '../common/audit/audit.service';
+import { AuditEvents } from '../common/audit/audit-events';
 import type { AnomalyReport, Anomaly } from './anomaly-detect.types';
 
 @Injectable()
 export class AnomalyDetectService {
   private readonly anthropic = new Anthropic();
 
-  constructor(private readonly firebase: FirebaseService) {}
+  constructor(
+    private readonly firebase: FirebaseService,
+    private readonly auditService: AuditService,
+  ) {}
 
   private async assertMembership(orgId: string, uid: string) {
     const memberRef = this.firebase.firestore
@@ -149,6 +154,16 @@ Rules:
 
     // Persist to Firestore
     await docRef.update({ anomalyReport: report });
+
+    void this.auditService.logToDocument({
+      userId: uid,
+      orgId,
+      documentId: docId,
+      action: AuditEvents.ANOMALY_DETECT_RUN,
+      modelUsed: 'claude-sonnet-4-20250514',
+      tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
+      responseStatus: 'success',
+    });
 
     return report;
   }
