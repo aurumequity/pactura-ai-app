@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, AlertCircle, Loader2, X } from "lucide-react";
 import { DocumentCard } from "@/components/document-card";
-import { apiGet, apiPost, apiDelete } from "@/lib/api";
+import { apiGet, apiDelete } from "@/lib/api";
 import { storage } from "@/lib/firebaseClient";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
@@ -34,6 +34,7 @@ const FILTER_LABELS: Record<string, string> = {
   flagged: "Flagged Clauses",
   completed: "Completed",
 };
+
 
 
 
