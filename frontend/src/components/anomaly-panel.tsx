@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import type React from "react";
 import { Loader2, AlertCircle, AlertTriangle, Info, XCircle, CheckCircle2 } from "lucide-react";
 import { apiPost } from "@/lib/api";
 
@@ -35,6 +36,7 @@ interface AnomalyPanelProps {
   orgId: string;
   docId: string;
   savedReport?: AnomalyReport | null;
+  embedded?: boolean;
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -102,11 +104,13 @@ function AnomalyRow({ anomaly }: { anomaly: Anomaly }) {
 
   return (
     <div className={`border-l-4 ${cfg.border} ${cfg.bg} px-4 py-3`}>
-      <div
-        className="flex items-start gap-3 cursor-pointer"
+      <button
+        type="button"
+        aria-expanded={expanded}
+        className="flex w-full items-start gap-3 text-left"
         onClick={() => setExpanded((prev) => !prev)}
       >
-        <Icon className={`size-4 mt-0.5 flex-shrink-0 ${cfg.iconColor}`} />
+        <Icon className={`size-4 mt-0.5 flex-shrink-0 ${cfg.iconColor}`} aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-foreground">{anomaly.title}</span>
@@ -121,13 +125,13 @@ function AnomalyRow({ anomaly }: { anomaly: Anomaly }) {
             <p className="text-xs text-muted-foreground mt-0.5">{anomaly.location}</p>
           )}
         </div>
-        <span className="text-xs text-muted-foreground flex-shrink-0">
+        <span className="text-xs text-muted-foreground flex-shrink-0" aria-hidden="true">
           {expanded ? "▲" : "▼"}
         </span>
-      </div>
+      </button>
 
       {expanded && (
-        <div className="mt-3 ml-7 space-y-2">
+        <div className="mt-3 ml-7 space-y-2" role="region" aria-label={`Details for ${anomaly.title}`}>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Finding
@@ -194,9 +198,9 @@ function SummaryBar({ report }: { report: AnomalyReport }) {
 
 function LoadingSkeleton() {
   return (
-    <div className="px-4 py-5 space-y-3">
+    <div role="status" aria-label="Analyzing document for anomalies" className="px-4 py-5 space-y-3">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="animate-pulse flex items-start gap-3">
+        <div key={i} className="animate-pulse flex items-start gap-3" aria-hidden="true">
           <div className="size-4 rounded-full bg-muted flex-shrink-0 mt-0.5" />
           <div className="flex-1 space-y-1.5">
             <div className="h-3 bg-muted rounded w-2/5" />
@@ -214,13 +218,16 @@ function LoadingSkeleton() {
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
-export function AnomalyPanel({ orgId, docId, savedReport }: AnomalyPanelProps) {
+export function AnomalyPanel({ orgId, docId, savedReport, embedded = false }: AnomalyPanelProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [liveReport, setLiveReport] = useState<AnomalyReport | null>(null);
 
   const report = liveReport ?? savedReport ?? null;
   const alreadyRun = Boolean(report);
+
+  const Outer: React.ElementType = embedded ? "div" : Card;
+  const ContentWrapper: React.ElementType = embedded ? "div" : CardContent;
 
   async function handleDetect() {
     setLoading(true);
@@ -240,7 +247,7 @@ export function AnomalyPanel({ orgId, docId, savedReport }: AnomalyPanelProps) {
   }
 
   return (
-    <Card className="mt-4">
+    <Outer className={embedded ? undefined : "mt-4"}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 border-b border-border bg-secondary/20 rounded-t-lg">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -273,11 +280,11 @@ export function AnomalyPanel({ orgId, docId, savedReport }: AnomalyPanelProps) {
         </Button>
       </div>
 
-      <CardContent className="p-0">
+      <ContentWrapper className="p-0">
         {/* Error */}
         {error && (
-          <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border-b border-red-100 text-sm text-red-700">
-            <AlertCircle className="size-4 shrink-0" />
+          <div role="alert" className="flex items-center gap-2 px-4 py-3 bg-red-50 border-b border-red-100 text-sm text-red-700">
+            <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
             {error}
           </div>
         )}
@@ -309,7 +316,7 @@ export function AnomalyPanel({ orgId, docId, savedReport }: AnomalyPanelProps) {
             Run anomaly detection to identify unusual or missing clauses.
           </div>
         )}
-      </CardContent>
-    </Card>
+      </ContentWrapper>
+    </Outer>
   );
 }

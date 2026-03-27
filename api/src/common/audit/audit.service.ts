@@ -3,6 +3,17 @@ import * as admin from 'firebase-admin';
 import { FirebaseService } from '../firebase/firebase.service';
 import { AuditEvent } from './audit-events';
 
+export interface LogDocumentAuditParams {
+  userId: string;
+  orgId: string;
+  documentId: string;
+  action: AuditEvent;
+  modelUsed: string;
+  tokensUsed: number;
+  responseStatus: 'success' | 'error';
+  metadata?: Record<string, unknown>;
+}
+
 export interface LogAuditParams {
   eventType: AuditEvent;
   userId: string;
@@ -51,6 +62,23 @@ export class AuditService {
     } catch (err) {
       // Audit failures must never crash the request — log and continue.
       this.logger.error(`Failed to write audit log [${eventType}]`, err);
+    }
+  }
+
+  async logToDocument(params: LogDocumentAuditParams): Promise<void> {
+    try {
+      await this.firebase.firestore
+        .collection('orgs')
+        .doc(params.orgId)
+        .collection('documents')
+        .doc(params.documentId)
+        .collection('auditLogs')
+        .add({
+          ...params,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+    } catch (err) {
+      this.logger.error(`Failed to write document audit log [${params.action}]`, err);
     }
   }
 }

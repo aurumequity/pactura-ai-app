@@ -14,6 +14,11 @@ export default function DashboardLayout({
   const router = useRouter();
 
   useEffect(() => {
+    const saved = localStorage.getItem('pactura-theme');
+    if (saved === 'dark') document.documentElement.classList.add('dark');
+  }, []);
+
+  useEffect(() => {
     if (!loading && !user) {
       router.push("/sign-in");
     }
@@ -31,8 +36,9 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <AppSidebar />
-      <div className="flex flex-1 flex-col overflow-y-auto">
+      <div id="main-content" className="flex flex-1 flex-col overflow-y-auto" tabIndex={-1}>
         {children}
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Delete, Param, Body } from '@nestjs/common';
 import { DocumentsService } from './documents.service';
 import { CurrentUser } from '../common/decorators/user.decorator';
-import type { CreateDocumentDto, NewVersionDto } from './documents.types';
+import type { CreateDocumentDto, NewVersionDto, ChatDto } from './documents.types';
 
 @Controller('orgs/:orgId/documents')
 export class DocumentsController {
@@ -71,5 +71,24 @@ export class DocumentsController {
     @CurrentUser() user: any,
   ) {
     return this.documentsService.analyzeDocument(orgId, user.uid, docId);
+  }
+
+  @Post(':docId/chat')
+  chat(
+    @Param('orgId') orgId: string,
+    @Param('docId') docId: string,
+    @CurrentUser() user: any,
+    @Body() dto: ChatDto,
+  ) {
+    return this.documentsService.chatDocument(orgId, user.uid, docId, dto);
+  }
+
+  @Get(':docId/audit-logs')
+  getAuditLogs(
+    @Param('orgId') orgId: string,
+    @Param('docId') docId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.documentsService.getDocumentAuditLogs(orgId, user.uid, docId);
   }
 }

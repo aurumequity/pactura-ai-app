@@ -2,26 +2,43 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
-import { LayoutDashboard, FileText, Settings, LogOut, ShieldCheck, Building2, ChevronDown, Check } from "lucide-react"
+import { useState, useEffect } from "react"
+import { LayoutDashboard, FileText, Settings, LogOut, ShieldCheck, Building2, ChevronDown, Check, ClipboardList, Sun, Moon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/context/AuthContext"
 
 const navItems = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Documents", href: "/documents", icon: FileText },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Dashboard",  href: "/dashboard",  icon: LayoutDashboard },
+  { label: "Documents",  href: "/documents",  icon: FileText },
+  { label: "Audit Log",  href: "/audit-log",  icon: ClipboardList },
+  { label: "Settings",   href: "/settings",   icon: Settings },
 ]
 
 export function AppSidebar() {
   const pathname = usePathname()
   const { logout, org, orgs, switchOrg } = useAuth()
   const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [dark, setDark] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('pactura-theme')
+    if (saved === 'dark') {
+      document.documentElement.classList.add('dark')
+      setDark(true)
+    }
+  }, [])
+
+  const toggleTheme = () => {
+    const next = !dark
+    setDark(next)
+    document.documentElement.classList.toggle('dark', next)
+    localStorage.setItem('pactura-theme', next ? 'dark' : 'light')
+  }
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
+    <aside className="flex h-screen w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground" aria-label="Application navigation">
       {/* Product branding */}
       <div className="flex items-center gap-3 px-6 py-5">
         <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-accent">
@@ -44,6 +61,9 @@ export function AppSidebar() {
         <div className="relative px-3 py-2">
           <button
             onClick={() => setSwitcherOpen((prev) => !prev)}
+            aria-expanded={switcherOpen}
+            aria-haspopup="listbox"
+            aria-label={`Switch organization. Current: ${org.name}`}
             className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors hover:bg-sidebar-accent/60"
           >
             <Building2 className="size-4 shrink-0 text-sidebar-foreground/50" />
@@ -67,10 +87,12 @@ export function AppSidebar() {
 
           {/* Dropdown */}
           {switcherOpen && orgs.length > 1 && (
-            <div className="absolute left-3 right-3 top-full z-50 mt-1 rounded-md border border-sidebar-border bg-sidebar shadow-lg">
+            <div role="listbox" aria-label="Select organization" className="absolute left-3 right-3 top-full z-50 mt-1 rounded-md border border-sidebar-border bg-sidebar shadow-lg">
               {orgs.map((o) => (
                 <button
                   key={o.id}
+                  role="option"
+                  aria-selected={o.id === org.id}
                   onClick={() => {
                     switchOrg(o);
                     setSwitcherOpen(false);
@@ -122,16 +144,25 @@ export function AppSidebar() {
 
       <Separator className="bg-sidebar-border" />
 
-      {/* Sign out */}
-      <div className="px-3 py-4">
+      {/* Footer: theme toggle + sign out */}
+      <div className="px-3 py-4 flex items-center gap-2">
         <Button
           variant="ghost"
           onClick={logout}
-          className="w-full justify-start gap-3 text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+          className="flex-1 justify-start gap-3 text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
         >
           <LogOut className="size-4" />
           <span className="text-sm">Sign out</span>
         </Button>
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-md hover:bg-sidebar-accent transition-colors"
+          aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {dark
+            ? <Sun className="size-4 text-[#D4A017]" />
+            : <Moon className="size-4 text-sidebar-foreground/60" />}
+        </button>
       </div>
     </aside>
   )

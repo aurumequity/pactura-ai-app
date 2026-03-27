@@ -1,5 +1,8 @@
 @import 'tailwindcss';
+@plugin "@tailwindcss/typography";
 /* @import 'tw-animate-css'; */
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* Deep Navy: #1E2F5C  |  Warm Gold: #D4A017  |  Light Gray: #F8F9FA */
 
@@ -36,6 +39,34 @@
   --sidebar-accent: #2A3F73;
   --sidebar-accent-foreground: #FFFFFF;
   --sidebar-border: #2A3F73;
+  --sidebar-ring: #D4A017;
+}
+
+.dark {
+  --background: #0D1B2A;
+  --foreground: #E2E8F0;
+  --card: rgba(255,255,255,0.04);
+  --card-foreground: #E2E8F0;
+  --popover: #0A1520;
+  --popover-foreground: #E2E8F0;
+  --primary: #D4A017;
+  --primary-foreground: #0D1B2A;
+  --secondary: rgba(255,255,255,0.06);
+  --secondary-foreground: #CBD5E1;
+  --muted: rgba(255,255,255,0.04);
+  --muted-foreground: #7B8FA8;
+  --accent: #D4A017;
+  --accent-foreground: #0D1B2A;
+  --destructive: #F09595;
+  --destructive-foreground: #0D1B2A;
+  --border: rgba(212,160,23,0.15);
+  --input: rgba(255,255,255,0.08);
+  --ring: #D4A017;
+  --sidebar: #0A1520;
+  --sidebar-foreground: #94A3B8;
+  --sidebar-accent: rgba(212,160,23,0.1);
+  --sidebar-accent-foreground: #D4A017;
+  --sidebar-border: rgba(212,160,23,0.15);
   --sidebar-ring: #D4A017;
 }
 
@@ -83,10 +114,49 @@
 @layer base {
   * {
     border-color: var(--border);
-    outline-color: rgb(var(--ring) / 0.5);
   }
   body {
     background-color: var(--background);
     color: var(--foreground);
+  }
+  /* Consistent, visible focus ring for keyboard navigation */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  /* Skip-to-content link — visually hidden until focused */
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .skip-link:focus {
+    position: fixed;
+    left: 1rem;
+    top: 1rem;
+    z-index: 9999;
+    width: auto;
+    height: auto;
+    padding: 0.5rem 1rem;
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    background: var(--card);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg, 12px);
   }
 }

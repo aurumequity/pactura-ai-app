@@ -8,6 +8,7 @@ export const AuditEvents = {
   REPORT_EXPORTED: 'REPORT_EXPORTED',
   MEMBER_ADDED: 'MEMBER_ADDED',
   MEMBER_REMOVED: 'MEMBER_REMOVED',
+  DOCUMENT_CHAT: 'DOCUMENT_CHAT',
 } as const;
 
 export type AuditEvent = (typeof AuditEvents)[keyof typeof AuditEvents];

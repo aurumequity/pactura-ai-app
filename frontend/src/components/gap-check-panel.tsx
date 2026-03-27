@@ -28,6 +28,7 @@ interface GapCheckPanelProps {
   orgId: string;
   docId: string;
   savedGaps?: Record<string, GapCheckResult>;
+  embedded?: boolean;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -75,8 +76,10 @@ function GapRow({ gap }: { gap: GapItem }) {
 
   return (
     <div className={`border-l-4 ${cfg.borderClass} ${cfg.bgClass} px-4 py-3`}>
-      <div
-        className="flex items-center justify-between gap-3 cursor-pointer"
+      <button
+        type="button"
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-between gap-3 text-left"
         onClick={() => setExpanded((prev) => !prev)}
       >
         <span className="text-sm font-medium text-foreground flex-1">
@@ -87,15 +90,15 @@ function GapRow({ gap }: { gap: GapItem }) {
             {cfg.label}
           </span>
           {expanded ? (
-            <ChevronUp className="size-3.5 text-muted-foreground" />
+            <ChevronUp className="size-3.5 text-muted-foreground" aria-hidden="true" />
           ) : (
-            <ChevronDown className="size-3.5 text-muted-foreground" />
+            <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
           )}
         </div>
-      </div>
+      </button>
 
       {expanded && (
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 space-y-2" role="region" aria-label={`Details for ${gap.requirement}`}>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Evidence
@@ -146,9 +149,9 @@ function SummaryBar({ gaps }: { gaps: GapItem[] }) {
 
 function LoadingSkeleton() {
   return (
-    <div className="px-4 py-5 space-y-3">
+    <div role="status" aria-label="Analyzing document against framework" className="px-4 py-5 space-y-3">
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="animate-pulse flex items-center gap-3">
+        <div key={i} className="animate-pulse flex items-center gap-3" aria-hidden="true">
           <div className="size-2 rounded-full bg-muted flex-shrink-0" />
           <div className="flex-1 space-y-1.5">
             <div className="h-3 bg-muted rounded w-2/5" />
@@ -166,11 +169,14 @@ function LoadingSkeleton() {
 
 // ─── Main Panel ──────────────────────────────────────────────────────────────
 
-export function GapCheckPanel({ orgId, docId, savedGaps = {} }: GapCheckPanelProps) {
+export function GapCheckPanel({ orgId, docId, savedGaps = {}, embedded = false }: GapCheckPanelProps) {
   const [selectedFramework, setSelectedFramework] = useState<FrameworkKey>("SOC2");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [liveResults, setLiveResults] = useState<Record<string, GapCheckResult>>({});
+
+  const Outer: React.ElementType = embedded ? "div" : Card;
+  const ContentWrapper: React.ElementType = embedded ? "div" : CardContent;
 
   const activeResult = liveResults[selectedFramework] ?? savedGaps[selectedFramework] ?? null;
   const alreadyRun = Boolean(activeResult);
@@ -194,7 +200,7 @@ export function GapCheckPanel({ orgId, docId, savedGaps = {} }: GapCheckPanelPro
   }
 
   return (
-    <Card className="mt-4">
+    <Outer className={embedded ? undefined : "mt-4"}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 border-b border-border bg-secondary/20 rounded-t-lg">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -209,8 +215,12 @@ export function GapCheckPanel({ orgId, docId, savedGaps = {} }: GapCheckPanelPro
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="relative z-10 flex items-center gap-2">
+          <label htmlFor="gap-check-framework" className="sr-only">
+            Compliance framework
+          </label>
           <select
+            id="gap-check-framework"
             value={selectedFramework}
             onChange={(e) => setSelectedFramework(e.target.value as FrameworkKey)}
             disabled={loading}
@@ -243,11 +253,11 @@ export function GapCheckPanel({ orgId, docId, savedGaps = {} }: GapCheckPanelPro
         </div>
       </div>
 
-      <CardContent className="p-0">
+      <ContentWrapper className="p-0">
         {/* Error */}
         {error && (
-          <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border-b border-red-100 text-sm text-red-700">
-            <AlertCircle className="size-4 shrink-0" />
+          <div role="alert" className="flex items-center gap-2 px-4 py-3 bg-red-50 border-b border-red-100 text-sm text-red-700">
+            <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
             {error}
           </div>
         )}
@@ -273,7 +283,7 @@ export function GapCheckPanel({ orgId, docId, savedGaps = {} }: GapCheckPanelPro
             Select a framework and run a gap check to see results inline.
           </div>
         )}
-      </CardContent>
-    </Card>
+      </ContentWrapper>
+    </Outer>
   );
 }

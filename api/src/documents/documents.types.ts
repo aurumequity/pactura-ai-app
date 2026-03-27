@@ -49,4 +49,21 @@ export interface AnalysisResult {
   keyParties: string[];
   complianceFlags: ComplianceFlag[];
   summary: string;
+  effectiveDate?: string;
+  termLength?: string;
+  totalValue?: string;
+  keyObligations?: string[];
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChatDto {
+  messages: ChatMessage[];
+}
+
+export interface ChatReply {
+  reply: string;
 }
