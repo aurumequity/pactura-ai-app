@@ -207,6 +207,7 @@ export function DocumentsPage() {
               analysisResult={analysisResults[doc.id] ?? null}
               deletingId={deletingId}
               onDelete={handleDelete}
+              onVersionCreated={fetchDocuments}
             />
           ))}
         </div>

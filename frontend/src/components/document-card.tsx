@@ -7,6 +7,7 @@ import { FileText, ChevronDown, ChevronUp, Loader2, Trash2, Sparkles } from "luc
 import { cn } from "@/lib/utils";
 import { GapCheckPanel } from "@/components/gap-check-panel";
 import { AnomalyPanel } from "@/components/anomaly-panel";
+import { VersionHistoryPanel } from "@/components/version-history-panel";
 
 type Tab = "gap-check" | "audit-summary" | "anomalies" | "version-history";
 
@@ -83,6 +84,7 @@ interface DocumentCardProps {
   analysisResult: AnalysisResult | null;
   deletingId: string | null;
   onDelete: (id: string) => void;
+  onVersionCreated?: () => void;
 }
 
 function formatDate(createdAt: Document["createdAt"]) {
@@ -90,7 +92,7 @@ function formatDate(createdAt: Document["createdAt"]) {
   return new Date(createdAt._seconds * 1000).toLocaleDateString();
 }
 
-export function DocumentCard({ doc, orgId, isAuditor, analyzingId, onAnalyze, analysisResult, deletingId, onDelete }: DocumentCardProps) {
+export function DocumentCard({ doc, orgId, isAuditor, analyzingId, onAnalyze, analysisResult, deletingId, onDelete, onVersionCreated }: DocumentCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("gap-check");
 
@@ -285,6 +287,14 @@ export function DocumentCard({ doc, orgId, isAuditor, analyzingId, onAnalyze, an
                 orgId={orgId}
                 docId={doc.id}
                 savedReport={doc.anomalyReport}
+                embedded={true}
+              />
+            ) : activeTab === "version-history" ? (
+              <VersionHistoryPanel
+                orgId={orgId}
+                docId={doc.id}
+                doc={doc}
+                onVersionCreated={onVersionCreated}
                 embedded={true}
               />
             ) : (
