@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -24,6 +25,7 @@ interface Document {
     criticalCount: number;
     highCount: number;
   } | null;
+  complianceGaps?: Record<string, unknown> | null;
 }
 
 interface Remediation {
@@ -94,6 +96,7 @@ function StatSkeleton() {
 export function DashboardPage() {
   const { user, org } = useAuth();
   const orgId = org?.id ?? "org-001";
+  const router = useRouter();
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [remediations, setRemediations] = useState<Remediation[]>([]);
@@ -130,7 +133,12 @@ export function DashboardPage() {
     return sum + (d.anomalyReport ? d.anomalyReport.criticalCount + d.anomalyReport.highCount : 0);
   }, 0);
   const completed = documents.filter(
-    (d) => d.isLatestVersion && d.auditSummary && d.anomalyReport,
+    (d) =>
+      d.isLatestVersion === true &&
+      d.auditSummary != null &&
+      d.anomalyReport != null &&
+      d.complianceGaps != null &&
+      Object.keys(d.complianceGaps).length > 0,
   ).length;
 
   const stats = [
@@ -139,24 +147,28 @@ export function DashboardPage() {
       value: totalContracts,
       description: "Across all programs",
       icon: FileText,
+      route: "/documents",
     },
     {
       title: "Pending Review",
       value: pendingReview,
       description: "Awaiting analysis",
       icon: Clock,
+      route: "/documents?filter=pending",
     },
     {
       title: "Flagged Clauses",
       value: flaggedClauses,
       description: "Critical & high anomalies",
       icon: AlertTriangle,
+      route: "/documents?filter=flagged",
     },
     {
       title: "Completed",
       value: completed,
       description: "Fully analyzed",
       icon: CheckCircle2,
+      route: "/documents?filter=completed",
     },
   ];
 
@@ -192,12 +204,20 @@ export function DashboardPage() {
         {loading
           ? Array.from({ length: 4 }).map((_, i) => <StatSkeleton key={i} />)
           : stats.map((stat) => (
-              <Card key={stat.title} className="glass-card gap-4 py-5">
+              <Card
+                key={stat.title}
+                className="glass-card gap-4 py-5 cursor-pointer transition-all hover:border-[#D4A017] hover:scale-[1.02] active:scale-[0.99]"
+                role="button"
+                tabIndex={0}
+                aria-label={`View ${stat.title} documents`}
+                onClick={() => router.push(stat.route)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); router.push(stat.route); } }}
+              >
                 <CardHeader className="flex flex-row items-center justify-between pb-0">
                   <CardDescription className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     {stat.title}
                   </CardDescription>
-                  <stat.icon className="size-4 text-accent" />
+                  <stat.icon className="size-4 text-accent" aria-hidden="true" />
                 </CardHeader>
                 <CardContent>
                   <CardTitle className="text-3xl font-bold tabular-nums text-foreground">

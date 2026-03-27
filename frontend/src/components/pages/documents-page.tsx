@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, AlertCircle, Loader2 } from "lucide-react";
+import { Upload, FileText, AlertCircle, Loader2, X } from "lucide-react";
 import { DocumentCard } from "@/components/document-card";
 import { apiGet, apiDelete } from "@/lib/api";
 import { storage } from "@/lib/firebaseClient";
@@ -21,15 +22,29 @@ interface Document {
   previousVersionId?: string;
   isLatestVersion: boolean;
   complianceGaps?: Record<string, unknown> | null;
-  anomalyReport?: unknown | null;
+  anomalyReport?: {
+    criticalCount: number;
+    highCount: number;
+  } | null;
   auditSummary?: unknown | null;
 }
+
+const FILTER_LABELS: Record<string, string> = {
+  pending: "Pending Review",
+  flagged: "Flagged Clauses",
+  completed: "Completed",
+};
+
 
 
 
 export function DocumentsPage() {
   const { org } = useAuth();
   const ORG_ID = org?.id ?? "org-001";
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeFilter = searchParams.get("filter") ?? "";
+
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -120,6 +135,13 @@ export function DocumentsPage() {
     if (file) handleUpload(file);
   }
 
+  const filteredDocs = (() => {
+    if (activeFilter === "pending") return documents.filter((d) => !d.auditSummary);
+    if (activeFilter === "flagged") return documents.filter((d) => d.anomalyReport && (d.anomalyReport.criticalCount + d.anomalyReport.highCount) > 0);
+    if (activeFilter === "completed") return documents.filter((d) => d.isLatestVersion === true && d.auditSummary != null && d.anomalyReport != null && d.complianceGaps != null && Object.keys(d.complianceGaps).length > 0);
+    return documents;
+  })();
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -153,6 +175,24 @@ export function DocumentsPage() {
         />
       </div>
 
+      {/* Active filter banner */}
+      {activeFilter && FILTER_LABELS[activeFilter] && (
+        <div className="flex items-center gap-2 rounded-lg border border-[#D4A017]/40 bg-[#D4A017]/10 px-4 py-2.5 text-sm text-foreground">
+          <span>
+            Showing <span className="font-semibold">{FILTER_LABELS[activeFilter]}</span>
+            {" "}({filteredDocs.length} of {documents.length})
+          </span>
+          <button
+            onClick={() => router.push("/documents")}
+            className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Clear filter"
+          >
+            <X className="size-3" aria-hidden="true" />
+            Clear
+          </button>
+        </div>
+      )}
+
       {/* Error */}
       {error && (
         <div role="alert" className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -169,9 +209,9 @@ export function DocumentsPage() {
       )}
 
       {/* Document list */}
-      {!loading && !error && documents.length > 0 && (
+      {!loading && !error && filteredDocs.length > 0 && (
         <div className="flex flex-col gap-3">
-          {documents.map((doc) => (
+          {filteredDocs.map((doc) => (
             <DocumentCard
               key={doc.id}
               doc={doc}
@@ -183,6 +223,19 @@ export function DocumentsPage() {
               onChatClose={() => setOpenChatDocId(null)}
             />
           ))}
+        </div>
+      )}
+
+      {/* Filtered empty state */}
+      {!loading && !error && filteredDocs.length === 0 && documents.length > 0 && activeFilter && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-sm font-medium text-foreground">No documents match this filter</p>
+          <button
+            onClick={() => router.push("/documents")}
+            className="mt-2 text-xs font-medium text-accent hover:underline"
+          >
+            Clear filter to see all documents
+          </button>
         </div>
       )}
 
