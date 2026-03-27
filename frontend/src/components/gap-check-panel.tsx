@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { apiPost } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,7 @@ interface GapCheckPanelProps {
   orgId: string;
   docId: string;
   savedGaps?: Record<string, GapCheckResult>;
+  embedded?: boolean;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -166,7 +168,8 @@ function LoadingSkeleton() {
 
 // ─── Main Panel ──────────────────────────────────────────────────────────────
 
-export function GapCheckPanel({ orgId, docId, savedGaps = {} }: GapCheckPanelProps) {
+export function GapCheckPanel({ orgId, docId, savedGaps = {}, embedded = false }: GapCheckPanelProps) {
+  const { user } = useAuth();
   const [selectedFramework, setSelectedFramework] = useState<FrameworkKey>("SOC2");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -185,6 +188,23 @@ export function GapCheckPanel({ orgId, docId, savedGaps = {} }: GapCheckPanelPro
         { framework: selectedFramework },
       );
       setLiveResults((prev) => ({ ...prev, [selectedFramework]: data }));
+
+      // Auto-create remediation tasks for all non-met gaps — fire and forget
+      const actionableGaps = data.gaps.filter((g) => g.status !== "met");
+      if (actionableGaps.length > 0) {
+        const due = new Date();
+        due.setDate(due.getDate() + 30);
+        apiPost(
+          `/orgs/${orgId}/documents/${docId}/remediations/bulk-create`,
+          {
+            framework: selectedFramework,
+            gaps: data.gaps,
+            defaultAssigneeId: user?.uid ?? "",
+            defaultAssigneeEmail: user?.email ?? "",
+            defaultDueDate: due.toISOString().split("T")[0],
+          },
+        ).catch((err) => console.warn("Bulk remediation creation failed:", err));
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Gap check failed.";
       setError(message);
@@ -193,8 +213,12 @@ export function GapCheckPanel({ orgId, docId, savedGaps = {} }: GapCheckPanelPro
     }
   }
 
+  const Outer: React.FC<{ children: React.ReactNode }> = embedded
+    ? ({ children }) => <div>{children}</div>
+    : ({ children }) => <Card className="mt-4">{children}</Card>;
+
   return (
-    <Card className="mt-4">
+    <Outer>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 border-b border-border bg-secondary/20 rounded-t-lg">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -274,6 +298,6 @@ export function GapCheckPanel({ orgId, docId, savedGaps = {} }: GapCheckPanelPro
           </div>
         )}
       </CardContent>
-    </Card>
+    </Outer>
   );
 }

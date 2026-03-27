@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, ChevronDown, ChevronUp, Loader2, Trash2, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { GapCheckPanel } from "@/components/gap-check-panel";
+import { AnomalyPanel } from "@/components/anomaly-panel";
 
 type Tab = "gap-check" | "audit-summary" | "anomalies" | "version-history";
 
@@ -21,6 +24,31 @@ const PANEL_LABELS: Record<Tab, string> = {
   "version-history": "Version History Panel",
 };
 
+interface GapItem {
+  requirement: string;
+  status: "met" | "partial" | "missing";
+  evidence: string;
+  recommendation: string;
+}
+
+interface AnomalyReport {
+  documentType: string;
+  totalAnomalies: number;
+  criticalCount: number;
+  highCount: number;
+  mediumCount: number;
+  lowCount: number;
+  anomalies: Array<{
+    type: string;
+    severity: string;
+    title: string;
+    description: string;
+    recommendation: string;
+    location?: string;
+  }>;
+  runAt?: { _seconds: number } | null;
+}
+
 interface Document {
   id: string;
   name: string;
@@ -31,6 +59,19 @@ interface Document {
   version: number;
   previousVersionId?: string;
   isLatestVersion: boolean;
+  complianceGaps?: Record<string, {
+    framework: string;
+    runAt?: { _seconds: number } | null;
+    gaps: GapItem[];
+  }>;
+  anomalyReport?: AnomalyReport | null;
+}
+
+interface AnalysisResult {
+  contractType: string;
+  keyParties: string[];
+  complianceFlags: { label: string; severity: "info" | "warning" | "critical" }[];
+  summary: string;
 }
 
 interface DocumentCardProps {
@@ -39,6 +80,7 @@ interface DocumentCardProps {
   isAuditor: boolean;
   analyzingId: string | null;
   onAnalyze: (id: string) => void;
+  analysisResult: AnalysisResult | null;
   deletingId: string | null;
   onDelete: (id: string) => void;
 }
@@ -48,9 +90,16 @@ function formatDate(createdAt: Document["createdAt"]) {
   return new Date(createdAt._seconds * 1000).toLocaleDateString();
 }
 
-export function DocumentCard({ doc, orgId: _orgId, isAuditor, analyzingId, onAnalyze, deletingId, onDelete }: DocumentCardProps) {
+export function DocumentCard({ doc, orgId, isAuditor, analyzingId, onAnalyze, analysisResult, deletingId, onDelete }: DocumentCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("gap-check");
+
+  useEffect(() => {
+    if (analysisResult) {
+      setExpanded(true);
+      setActiveTab("audit-summary");
+    }
+  }, [analysisResult]);
 
   return (
     <Card>
@@ -158,8 +207,89 @@ export function DocumentCard({ doc, orgId: _orgId, isAuditor, analyzingId, onAna
           </div>
 
           {/* Panel content */}
-          <div className="px-4 py-4 text-sm text-muted-foreground">
-            {PANEL_LABELS[activeTab]}
+          <div className="px-4 py-4">
+            {activeTab === "audit-summary" && analysisResult ? (
+              <div className="flex flex-col gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Contract Type
+                  </p>
+                  <p className="mt-1 text-sm text-foreground">{analysisResult.contractType}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Summary
+                  </p>
+                  <p className="mt-1 text-sm leading-relaxed text-foreground">
+                    {analysisResult.summary}
+                  </p>
+                </div>
+
+                {analysisResult.keyParties.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Key Parties
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {analysisResult.keyParties.map((party) => (
+                        <span
+                          key={party}
+                          className="rounded-full bg-secondary px-2.5 py-0.5 text-xs text-foreground"
+                        >
+                          {party}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {analysisResult.complianceFlags.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Compliance Flags
+                    </p>
+                    <div className="mt-1.5 flex flex-col gap-1.5">
+                      {analysisResult.complianceFlags.map((flag, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <span
+                            className={cn(
+                              "mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
+                              flag.severity === "critical" && "bg-red-100 text-red-700",
+                              flag.severity === "warning"  && "bg-yellow-100 text-yellow-700",
+                              flag.severity === "info"     && "bg-blue-100 text-blue-700",
+                            )}
+                          >
+                            {flag.severity}
+                          </span>
+                          <p className="text-sm text-foreground">{flag.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : activeTab === "audit-summary" ? (
+              <p className="text-sm text-muted-foreground">
+                Run AI analysis to see results.
+              </p>
+            ) : activeTab === "gap-check" ? (
+              <GapCheckPanel
+                orgId={orgId}
+                docId={doc.id}
+                savedGaps={doc.complianceGaps}
+                embedded={true}
+              />
+            ) : activeTab === "anomalies" ? (
+              <AnomalyPanel
+                orgId={orgId}
+                docId={doc.id}
+                savedReport={doc.anomalyReport}
+                embedded={true}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">{PANEL_LABELS[activeTab]}</p>
+            )}
           </div>
         </div>
       )}

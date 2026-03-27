@@ -25,6 +25,13 @@ interface Document {
   isLatestVersion: boolean;
 }
 
+interface AnalysisResult {
+  contractType: string;
+  keyParties: string[];
+  complianceFlags: { label: string; severity: "info" | "warning" | "critical" }[];
+  summary: string;
+}
+
 
 export function DocumentsPage() {
   const { org } = useAuth();
@@ -40,6 +47,7 @@ export function DocumentsPage() {
   const [dragOver, setDragOver] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [analysisResults, setAnalysisResults] = useState<Record<string, AnalysisResult>>({});
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Record<string, "gap-check" | "audit-summary" | "anomalies">>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,7 +111,8 @@ export function DocumentsPage() {
     setAnalyzingId(docId);
     setError(null);
     try {
-      await apiPost(`/orgs/${ORG_ID}/documents/${docId}/analyze`, {});
+      const result = await apiPost<AnalysisResult>(`/orgs/${ORG_ID}/documents/${docId}/analyze`, {});
+      setAnalysisResults((prev) => ({ ...prev, [docId]: result }));
     } catch {
       setError("Analysis failed. Please try again.");
     } finally {
@@ -195,6 +204,7 @@ export function DocumentsPage() {
               isAuditor={isAuditor}
               analyzingId={analyzingId}
               onAnalyze={handleAnalyze}
+              analysisResult={analysisResults[doc.id] ?? null}
               deletingId={deletingId}
               onDelete={handleDelete}
             />

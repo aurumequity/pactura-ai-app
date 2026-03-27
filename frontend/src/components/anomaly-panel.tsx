@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, AlertCircle, AlertTriangle, Info, XCircle, CheckCircle2 } from "lucide-react";
 import { apiPost } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,7 @@ interface AnomalyPanelProps {
   orgId: string;
   docId: string;
   savedReport?: AnomalyReport | null;
+  embedded?: boolean;
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -214,7 +216,8 @@ function LoadingSkeleton() {
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
-export function AnomalyPanel({ orgId, docId, savedReport }: AnomalyPanelProps) {
+export function AnomalyPanel({ orgId, docId, savedReport, embedded = false }: AnomalyPanelProps) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [liveReport, setLiveReport] = useState<AnomalyReport | null>(null);
@@ -231,6 +234,32 @@ export function AnomalyPanel({ orgId, docId, savedReport }: AnomalyPanelProps) {
         {},
       );
       setLiveReport(data);
+
+      // Auto-create remediations for high and critical anomalies — fire and forget
+      const actionable = data.anomalies.filter(
+        (a) => a.severity === "critical" || a.severity === "high"
+      );
+      if (actionable.length > 0) {
+        const due = new Date();
+        due.setDate(due.getDate() + 30);
+        const dueDate = due.toISOString().split("T")[0];
+        Promise.all(
+          actionable.map((anomaly) =>
+            apiPost(`/orgs/${orgId}/remediations`, {
+              documentId: docId,
+              sourceGap: anomaly.title,
+              framework: "CMMC",
+              title: anomaly.title,
+              description: anomaly.description,
+              assigneeId: user?.uid ?? "",
+              assigneeEmail: user?.email ?? "",
+              dueDate,
+              severity: anomaly.severity,
+              status: "open",
+            })
+          )
+        ).catch((err) => console.warn("Anomaly remediation creation failed:", err));
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Anomaly detection failed.";
       setError(message);
@@ -239,8 +268,12 @@ export function AnomalyPanel({ orgId, docId, savedReport }: AnomalyPanelProps) {
     }
   }
 
+  const Outer: React.FC<{ children: React.ReactNode }> = embedded
+    ? ({ children }) => <div>{children}</div>
+    : ({ children }) => <Card className="mt-4">{children}</Card>;
+
   return (
-    <Card className="mt-4">
+    <Outer>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 border-b border-border bg-secondary/20 rounded-t-lg">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -310,6 +343,6 @@ export function AnomalyPanel({ orgId, docId, savedReport }: AnomalyPanelProps) {
           </div>
         )}
       </CardContent>
-    </Card>
+    </Outer>
   );
 }
