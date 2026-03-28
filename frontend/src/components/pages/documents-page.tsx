@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, AlertCircle, Loader2, X } from "lucide-react";
 import { DocumentCard } from "@/components/document-card";
-import { apiGet, apiDelete } from "@/lib/api";
+import { apiGet, apiDelete, apiGetBlob } from "@/lib/api";
 import { storage } from "@/lib/firebaseClient";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
@@ -107,6 +107,20 @@ export function DocumentsPage() {
     } finally {
       setUploading(false);
       setUploadProgress(0);
+    }
+  }
+
+  async function handleDownloadEvidence(docId: string) {
+    try {
+      const blob = await apiGetBlob(`/orgs/${ORG_ID}/documents/${docId}/evidence-package`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `evidence-package-${docId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('Evidence package download failed. Please try again.');
     }
   }
 
@@ -217,6 +231,7 @@ export function DocumentsPage() {
               doc={doc}
               deletingId={deletingId}
               onDelete={handleDelete}
+              onDownloadEvidence={handleDownloadEvidence}
               orgId={ORG_ID}
               isChatOpen={openChatDocId === doc.id}
               onChatOpen={() => setOpenChatDocId(doc.id)}

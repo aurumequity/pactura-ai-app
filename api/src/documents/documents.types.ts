@@ -1,6 +1,7 @@
 import type { GapCheckResult, GapItem } from '../gap-check/gap-check.types';
 import type { AuditSummary } from '../audit-summary/audit-summary.types';
 import type { AnomalyReport } from '../anomaly-detect/anomaly-detect.types';
+import type { Remediation } from '../modules/remediations/remediations.types';
 
 export interface DocumentRecord {
   id: string;
@@ -66,4 +67,31 @@ export interface ChatDto {
 
 export interface ChatReply {
   reply: string;
+}
+
+export interface FrameworkGapSummary {
+  total: number;
+  missing: number;
+  partial: number;
+}
+
+export interface EvidencePackage {
+  generatedAt: string;
+  orgId: string;
+  documentId: string;
+  generatedBy: string;
+  document: DocumentRecord;
+  complianceSummary: {
+    frameworks: string[];
+    totalGaps: number;
+    gapsByFramework: Record<string, FrameworkGapSummary>;
+  };
+  remediations: {
+    total: number;
+    open: number;
+    inProgress: number;
+    resolved: number;
+    items: Remediation[];
+  };
+  auditTrail: Record<string, unknown>[];
 }

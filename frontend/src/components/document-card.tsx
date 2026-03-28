@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, ChevronDown, ChevronUp, Loader2, Trash2, MessageSquare, Sparkles } from "lucide-react";
+import { FileText, ChevronDown, ChevronUp, Loader2, Trash2, MessageSquare, Sparkles, FileDown } from "lucide-react";
 import { DocumentAiChat } from "@/components/document-ai-chat";
 import { GapCheckPanel } from "@/components/gap-check-panel";
 import { AnomalyPanel } from "@/components/anomaly-panel";
@@ -69,6 +69,7 @@ interface DocumentCardProps {
   doc: Document;
   deletingId: string | null;
   onDelete: (id: string) => void;
+  onDownloadEvidence?: (id: string) => void;
   orgId?: string;
   isChatOpen: boolean;
   onChatOpen: () => void;
@@ -80,7 +81,7 @@ function formatDate(createdAt: Document["createdAt"]) {
   return new Date(createdAt._seconds * 1000).toLocaleDateString();
 }
 
-export function DocumentCard({ doc, deletingId, onDelete, orgId, isChatOpen, onChatOpen, onChatClose }: DocumentCardProps) {
+export function DocumentCard({ doc, deletingId, onDelete, onDownloadEvidence, orgId, isChatOpen, onChatOpen, onChatClose }: DocumentCardProps) {
   const { org } = useAuth();
   const resolvedOrgId = orgId ?? org?.id ?? "org-001";
   const isAuditor = org?.role === "auditor";
@@ -152,6 +153,18 @@ export function DocumentCard({ doc, deletingId, onDelete, orgId, isChatOpen, onC
               {analyzing
                 ? <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                 : <Sparkles className="size-4" aria-hidden="true" />}
+            </Button>
+          )}
+          {!isAuditor && onDownloadEvidence && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Download evidence package"
+              className="size-8 text-muted-foreground hover:text-[#D4A017] hover:bg-[#D4A017]/10"
+              onClick={() => onDownloadEvidence(doc.id)}
+              title="Download evidence package"
+            >
+              <FileDown className="size-4" aria-hidden="true" />
             </Button>
           )}
           <Button

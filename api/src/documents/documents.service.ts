@@ -13,7 +13,9 @@ import {
   DeltaByFramework,
   ChatDto,
   ChatReply,
+  EvidencePackage,
 } from './documents.types';
+import { RemediationsService } from '../modules/remediations/remediations.service';
 import Anthropic from '@anthropic-ai/sdk';
 import { AnalysisResult } from './documents.types';
 import { AuditService } from '../common/audit/audit.service';
@@ -27,6 +29,7 @@ export class DocumentsService {
     private readonly firebase: FirebaseService,
     private readonly auditService: AuditService,
     private readonly gapCheckService: GapCheckService,
+    private readonly remediationsService: RemediationsService,
   ) {}
 
   private async assertMembership(orgId: string, uid: string) {
@@ -500,6 +503,60 @@ The full document content is provided in the first user message as a PDF. Answer
       .get();
 
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+
+  async generateEvidencePackage(
+    orgId: string,
+    uid: string,
+    userEmail: string,
+    docId: string,
+  ): Promise<EvidencePackage> {
+    const doc = await this.getDocument(orgId, uid, docId);
+
+    const [remediations, auditTrail] = await Promise.all([
+      this.remediationsService.list(orgId, { documentId: docId }),
+      this.getDocumentAuditLogs(orgId, uid, docId),
+    ]);
+
+    const complianceGaps = doc.complianceGaps ?? {};
+    const frameworks = Object.keys(complianceGaps);
+    let totalGaps = 0;
+    const gapsByFramework: Record<string, { total: number; missing: number; partial: number }> = {};
+
+    for (const framework of frameworks) {
+      const gaps = complianceGaps[framework].gaps ?? [];
+      const unmet = gaps.filter((g) => g.status !== 'met');
+      const missing = gaps.filter((g) => g.status === 'missing').length;
+      const partial = gaps.filter((g) => g.status === 'partial').length;
+      gapsByFramework[framework] = { total: unmet.length, missing, partial };
+      totalGaps += unmet.length;
+    }
+
+    void this.auditService.log({
+      eventType: AuditEvents.REPORT_EXPORTED,
+      userId: uid,
+      userEmail,
+      orgId,
+      documentId: docId,
+      metadata: { type: 'evidence-package', frameworks },
+    });
+
+    return {
+      generatedAt: new Date().toISOString(),
+      orgId,
+      documentId: docId,
+      generatedBy: userEmail,
+      document: doc,
+      complianceSummary: { frameworks, totalGaps, gapsByFramework },
+      remediations: {
+        total: remediations.length,
+        open: remediations.filter((r) => r.status === 'open').length,
+        inProgress: remediations.filter((r) => r.status === 'in_progress').length,
+        resolved: remediations.filter((r) => r.status === 'resolved').length,
+        items: remediations,
+      },
+      auditTrail,
+    };
   }
 
   async getDocumentDelta(

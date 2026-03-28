@@ -3,17 +3,20 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
-import { LayoutDashboard, FileText, Settings, LogOut, ShieldCheck, Building2, ChevronDown, Check, ClipboardList, Sun, Moon } from "lucide-react"
+import { LayoutDashboard, FileText, Settings, LogOut, ShieldCheck, Building2, ChevronDown, Check, ClipboardList, Sun, Moon, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/context/AuthContext"
 
+
 const navItems = [
   { label: "Dashboard",  href: "/dashboard",  icon: LayoutDashboard },
   { label: "Documents",  href: "/documents",  icon: FileText },
   { label: "Audit Log",  href: "/audit-log",  icon: ClipboardList },
+  { label: "Team",       href: "/team",       icon: Users },
   { label: "Settings",   href: "/settings",   icon: Settings },
+  
 ]
 
 export function AppSidebar() {
