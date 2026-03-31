@@ -3,20 +3,30 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, ChevronDown, ChevronUp, Loader2, Trash2, MessageSquare, Sparkles } from "lucide-react";
+import {
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Trash2,
+  MessageSquare,
+  Sparkles,
+  FileDown,
+} from "lucide-react";
 import { DocumentAiChat } from "@/components/document-ai-chat";
 import { GapCheckPanel } from "@/components/gap-check-panel";
 import { AnomalyPanel } from "@/components/anomaly-panel";
 import { DocumentAuditHistory } from "@/components/document-audit-history";
 import { useAuth } from "@/context/AuthContext";
 import { apiPost } from "@/lib/api";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 type Tab = "gap-check" | "audit-summary" | "anomalies" | "version-history";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "gap-check",       label: "Gap Check" },
-  { id: "audit-summary",   label: "Audit Summary" },
-  { id: "anomalies",       label: "Anomalies" },
+  { id: "gap-check", label: "Gap Check" },
+  { id: "audit-summary", label: "Audit Summary" },
+  { id: "anomalies", label: "Anomalies" },
   { id: "version-history", label: "Activity" },
 ];
 
@@ -39,15 +49,33 @@ interface AnalysisResult {
 interface GapCheckResult {
   framework: string;
   runAt?: { _seconds: number } | null;
-  gaps: { requirement: string; status: string; evidence: string; recommendation: string }[];
+  gaps: {
+    requirement: string;
+    status: "met" | "partial" | "missing";
+    evidence: string;
+    recommendation: string;
+  }[];
 }
 
 interface AnomalyReport {
+  documentType: string;
   totalAnomalies: number;
   criticalCount: number;
   highCount: number;
   mediumCount: number;
-  anomalies: unknown[];
+  lowCount: number;
+  anomalies: {
+    type:
+      | "unusual_clause"
+      | "missing_clause"
+      | "conflicting_terms"
+      | "non_standard_language";
+    severity: "low" | "medium" | "high" | "critical";
+    title: string;
+    description: string;
+    recommendation: string;
+    location?: string;
+  }[];
 }
 
 interface Document {
@@ -69,6 +97,8 @@ interface DocumentCardProps {
   doc: Document;
   deletingId: string | null;
   onDelete: (id: string) => void;
+  onDownloadEvidence?: (id: string) => void;
+  onAnalyzeComplete?: () => void;
   orgId?: string;
   isChatOpen: boolean;
   onChatOpen: () => void;
@@ -80,7 +110,17 @@ function formatDate(createdAt: Document["createdAt"]) {
   return new Date(createdAt._seconds * 1000).toLocaleDateString();
 }
 
-export function DocumentCard({ doc, deletingId, onDelete, orgId, isChatOpen, onChatOpen, onChatClose }: DocumentCardProps) {
+export function DocumentCard({
+  doc,
+  deletingId,
+  onDelete,
+  onDownloadEvidence,
+  onAnalyzeComplete,
+  orgId,
+  isChatOpen,
+  onChatOpen,
+  onChatClose,
+}: DocumentCardProps) {
   const { org } = useAuth();
   const resolvedOrgId = orgId ?? org?.id ?? "org-001";
   const isAuditor = org?.role === "auditor";
@@ -99,6 +139,7 @@ export function DocumentCard({ doc, deletingId, onDelete, orgId, isChatOpen, onC
         {},
       );
       setAnalysisResult(result);
+      onAnalyzeComplete?.();
     } finally {
       setAnalyzing(false);
     }
@@ -115,20 +156,8 @@ export function DocumentCard({ doc, deletingId, onDelete, orgId, isChatOpen, onC
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium text-foreground">{doc.name}</p>
-              <span
-                className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                style={{ backgroundColor: "#1E2F5C" }}
-              >
-                v{doc.version ?? 1}
-              </span>
-              {!doc.isLatestVersion && (
-                <span
-                  className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                  style={{ backgroundColor: "#D4A017" }}
-                >
-                  outdated
-                </span>
-              )}
+              <StatusBadge status={`v${doc.version ?? 1}`} />
+              {!doc.isLatestVersion && <StatusBadge status="outdated" />}
             </div>
             <p className="text-xs text-muted-foreground">
               {doc.fileType} · {formatDate(doc.createdAt)}
@@ -137,9 +166,7 @@ export function DocumentCard({ doc, deletingId, onDelete, orgId, isChatOpen, onC
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground capitalize">
-            {doc.status}
-          </span>
+          <StatusBadge status={doc.status} />
           {!isAuditor && (
             <Button
               variant="ghost"
@@ -149,9 +176,23 @@ export function DocumentCard({ doc, deletingId, onDelete, orgId, isChatOpen, onC
               onClick={handleAnalyze}
               disabled={analyzing}
             >
-              {analyzing
-                ? <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                : <Sparkles className="size-4" aria-hidden="true" />}
+              {analyzing ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Sparkles className="size-4" aria-hidden="true" />
+              )}
+            </Button>
+          )}
+          {!isAuditor && onDownloadEvidence && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Download evidence package"
+              className="size-8 text-muted-foreground hover:text-[#D4A017] hover:bg-[#D4A017]/10"
+              onClick={() => onDownloadEvidence(doc.id)}
+              title="Download evidence package"
+            >
+              <FileDown className="size-4" aria-hidden="true" />
             </Button>
           )}
           <Button
@@ -166,7 +207,11 @@ export function DocumentCard({ doc, deletingId, onDelete, orgId, isChatOpen, onC
           <Button
             variant="ghost"
             size="icon"
-            aria-label={deletingId === doc.id ? "Deleting document…" : `Delete ${doc.name}`}
+            aria-label={
+              deletingId === doc.id
+                ? "Deleting document…"
+                : `Delete ${doc.name}`
+            }
             className="size-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
             onClick={() => onDelete(doc.id)}
             disabled={deletingId === doc.id}
@@ -205,7 +250,11 @@ export function DocumentCard({ doc, deletingId, onDelete, orgId, isChatOpen, onC
       {expanded && (
         <div className="border-t border-border">
           {/* Tab bar */}
-          <div role="tablist" aria-label="Document analysis sections" className="flex gap-0 border-b border-border px-4">
+          <div
+            role="tablist"
+            aria-label="Document analysis sections"
+            className="flex gap-0 border-b border-border px-4"
+          >
             {TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -222,7 +271,10 @@ export function DocumentCard({ doc, deletingId, onDelete, orgId, isChatOpen, onC
                         borderBottom: "2px solid #D4A017",
                         marginBottom: "-1px",
                       }
-                    : { color: "#6b7280", borderBottom: "2px solid transparent" }
+                    : {
+                        color: "#6b7280",
+                        borderBottom: "2px solid transparent",
+                      }
                 }
               >
                 {tab.label}
@@ -246,65 +298,100 @@ export function DocumentCard({ doc, deletingId, onDelete, orgId, isChatOpen, onC
               />
             )}
 
-            {activeTab === "audit-summary" && (
-              analysisResult ? (
+            {activeTab === "audit-summary" &&
+              (analysisResult ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div className="rounded-md bg-secondary/50 px-3 py-2.5">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Contract Type</p>
-                      <p className="mt-0.5 text-xs font-medium text-foreground">{analysisResult.contractType}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Contract Type
+                      </p>
+                      <p className="mt-0.5 text-xs font-medium text-foreground">
+                        {analysisResult.contractType}
+                      </p>
                     </div>
                     {analysisResult.effectiveDate && (
                       <div className="rounded-md bg-secondary/50 px-3 py-2.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Effective Date</p>
-                        <p className="mt-0.5 text-xs font-medium text-foreground">{analysisResult.effectiveDate}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Effective Date
+                        </p>
+                        <p className="mt-0.5 text-xs font-medium text-foreground">
+                          {analysisResult.effectiveDate}
+                        </p>
                       </div>
                     )}
                     {analysisResult.termLength && (
                       <div className="rounded-md bg-secondary/50 px-3 py-2.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Term Length</p>
-                        <p className="mt-0.5 text-xs font-medium text-foreground">{analysisResult.termLength}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Term Length
+                        </p>
+                        <p className="mt-0.5 text-xs font-medium text-foreground">
+                          {analysisResult.termLength}
+                        </p>
                       </div>
                     )}
                     {analysisResult.totalValue && (
                       <div className="rounded-md bg-secondary/50 px-3 py-2.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total Value</p>
-                        <p className="mt-0.5 text-xs font-medium text-foreground">{analysisResult.totalValue}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Total Value
+                        </p>
+                        <p className="mt-0.5 text-xs font-medium text-foreground">
+                          {analysisResult.totalValue}
+                        </p>
                       </div>
                     )}
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Summary</p>
-                    <p className="mt-1 text-sm text-foreground leading-relaxed">{analysisResult.summary}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Summary
+                    </p>
+                    <p className="mt-1 text-sm text-foreground leading-relaxed">
+                      {analysisResult.summary}
+                    </p>
                   </div>
                   {analysisResult.keyParties.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Key Parties</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Key Parties
+                      </p>
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {analysisResult.keyParties.map((party, i) => (
-                          <span key={i} className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-foreground">
+                          <span
+                            key={i}
+                            className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-foreground"
+                          >
                             {party}
                           </span>
                         ))}
                       </div>
                     </div>
                   )}
-                  {analysisResult.keyObligations && analysisResult.keyObligations.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Key Obligations</p>
-                      <ul className="mt-1.5 space-y-1">
-                        {analysisResult.keyObligations.map((obligation, i) => (
-                          <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                            <span className="mt-1.5 size-1.5 rounded-full bg-[#1E2F5C] flex-shrink-0" />
-                            {obligation}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  {analysisResult.keyObligations &&
+                    analysisResult.keyObligations.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Key Obligations
+                        </p>
+                        <ul className="mt-1.5 space-y-1">
+                          {analysisResult.keyObligations.map(
+                            (obligation, i) => (
+                              <li
+                                key={i}
+                                className="flex items-start gap-2 text-sm text-foreground"
+                              >
+                                <span className="mt-1.5 size-1.5 rounded-full bg-[#1E2F5C] flex-shrink-0" />
+                                {obligation}
+                              </li>
+                            ),
+                          )}
+                        </ul>
+                      </div>
+                    )}
                   {analysisResult.complianceFlags.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Compliance Flags</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Compliance Flags
+                      </p>
                       <div className="mt-2 space-y-1.5">
                         {analysisResult.complianceFlags.map((flag, i) => (
                           <div
@@ -313,11 +400,13 @@ export function DocumentCard({ doc, deletingId, onDelete, orgId, isChatOpen, onC
                               flag.severity === "critical"
                                 ? "bg-red-50 text-red-800"
                                 : flag.severity === "warning"
-                                ? "bg-yellow-50 text-yellow-800"
-                                : "bg-blue-50 text-blue-800"
+                                  ? "bg-yellow-50 text-yellow-800"
+                                  : "bg-blue-50 text-blue-800"
                             }`}
                           >
-                            <span className="font-semibold capitalize flex-shrink-0">{flag.severity}</span>
+                            <span className="font-semibold capitalize flex-shrink-0">
+                              {flag.severity}
+                            </span>
                             <span>{flag.label}</span>
                           </div>
                         ))}
@@ -327,10 +416,13 @@ export function DocumentCard({ doc, deletingId, onDelete, orgId, isChatOpen, onC
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Click the <span className="inline-flex items-center gap-1 font-medium">✦ Analyze</span> button to generate an AI summary.
+                  Click the{" "}
+                  <span className="inline-flex items-center gap-1 font-medium">
+                    ✦ Analyze
+                  </span>{" "}
+                  button to generate an AI summary.
                 </p>
-              )
-            )}
+              ))}
 
             {activeTab === "anomalies" && (
               <AnomalyPanel
@@ -342,10 +434,7 @@ export function DocumentCard({ doc, deletingId, onDelete, orgId, isChatOpen, onC
             )}
 
             {activeTab === "version-history" && (
-              <DocumentAuditHistory
-                orgId={resolvedOrgId}
-                docId={doc.id}
-              />
+              <DocumentAuditHistory orgId={resolvedOrgId} docId={doc.id} />
             )}
           </div>
         </div>

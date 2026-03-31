@@ -1,64 +1,105 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useState, useEffect } from "react"
-import { LayoutDashboard, FileText, Settings, LogOut, ShieldCheck, Building2, ChevronDown, Check, ClipboardList, Sun, Moon } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { useAuth } from "@/context/AuthContext"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import {
+  LayoutDashboard,
+  FileText,
+  Settings,
+  LogOut,
+  Building2,
+  ChevronDown,
+  Check,
+  ClipboardList,
+  Sun,
+  Moon,
+  Users,
+  HelpCircle,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/context/AuthContext";
+import { PacturaLogo } from "@/components/ui/PacturaLogo";
 
 const navItems = [
-  { label: "Dashboard",  href: "/dashboard",  icon: LayoutDashboard },
-  { label: "Documents",  href: "/documents",  icon: FileText },
-  { label: "Audit Log",  href: "/audit-log",  icon: ClipboardList },
-  { label: "Settings",   href: "/settings",   icon: Settings },
-]
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Documents", href: "/documents", icon: FileText },
+  { label: "Audit Log", href: "/audit-log", icon: ClipboardList },
+  { label: "Team", href: "/team", icon: Users },
+  { label: "Settings", href: "/settings", icon: Settings },
+];
+
+const bottomNavItems = [
+  { label: "Help & FAQ", href: "/help", icon: HelpCircle },
+];
 
 export function AppSidebar() {
-  const pathname = usePathname()
-  const { logout, org, orgs, switchOrg } = useAuth()
-  const [switcherOpen, setSwitcherOpen] = useState(false)
-  const [dark, setDark] = useState(false)
+  const pathname = usePathname();
+  const { logout, org, orgs, switchOrg } = useAuth();
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [dark, setDark] = useState(false);
+  const switcherRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('pactura-theme')
-    if (saved === 'dark') {
-      document.documentElement.classList.add('dark')
-      setDark(true)
+    if (!switcherOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        switcherRef.current &&
+        !switcherRef.current.contains(e.target as Node)
+      ) {
+        setSwitcherOpen(false);
+      }
     }
-  }, [])
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [switcherOpen]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("pactura-theme");
+    if (saved === "dark") {
+      document.documentElement.classList.add("dark");
+      setDark(true);
+    }
+  }, []);
 
   const toggleTheme = () => {
-    const next = !dark
-    setDark(next)
-    document.documentElement.classList.toggle('dark', next)
-    localStorage.setItem('pactura-theme', next ? 'dark' : 'light')
-  }
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("pactura-theme", next ? "dark" : "light");
+  };
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground" aria-label="Application navigation">
+    <aside
+      className="flex h-screen w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground"
+      aria-label="Application navigation"
+    >
       {/* Product branding */}
-      <div className="flex items-center gap-3 px-6 py-5">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-accent">
-          <ShieldCheck className="size-5 text-accent" />
-        </div>
+      <Link
+        href="/dashboard"
+        className="flex items-center gap-3 px-6 py-5 hover:opacity-80 transition-opacity"
+      >
+        <PacturaLogo size="sm" variant="auto" priority />
         <div className="flex flex-col">
-          <span className="text-sm font-semibold tracking-tight text-sidebar-accent-foreground">
-            Pactura
+          <span
+            className="text-sm font-semibold tracking-tight"
+            style={{ color: "#C9A84C" }}
+          >
+            Pactura.ai
           </span>
           <span className="text-xs text-sidebar-foreground/60">
             Contract Intelligence
           </span>
         </div>
-      </div>
+      </Link>
 
       <Separator className="bg-sidebar-border" />
 
       {/* Org switcher */}
       {org && (
-        <div className="relative px-3 py-2">
+        <div ref={switcherRef} className="px-3 py-2">
           <button
             onClick={() => setSwitcherOpen((prev) => !prev)}
             aria-expanded={switcherOpen}
@@ -79,15 +120,19 @@ export function AppSidebar() {
               <ChevronDown
                 className={cn(
                   "size-3.5 shrink-0 text-sidebar-foreground/40 transition-transform",
-                  switcherOpen && "rotate-180"
+                  switcherOpen && "rotate-180",
                 )}
               />
             )}
           </button>
 
-          {/* Dropdown */}
+          {/* Inline org list — renders in flow so nav items stay visible */}
           {switcherOpen && orgs.length > 1 && (
-            <div role="listbox" aria-label="Select organization" className="absolute left-3 right-3 top-full z-50 mt-1 rounded-md border border-sidebar-border bg-sidebar shadow-lg">
+            <div
+              role="listbox"
+              aria-label="Select organization"
+              className="mt-1 rounded-md border border-sidebar-border bg-sidebar-accent/30"
+            >
               {orgs.map((o) => (
                 <button
                   key={o.id}
@@ -104,7 +149,9 @@ export function AppSidebar() {
                     <span className="truncate font-medium text-sidebar-accent-foreground">
                       {o.name}
                     </span>
-                    <span className="text-sidebar-foreground/50 capitalize">{o.role}</span>
+                    <span className="text-sidebar-foreground/50 capitalize">
+                      {o.role}
+                    </span>
                   </div>
                   {o.id === org.id && (
                     <Check className="size-3.5 shrink-0 text-accent" />
@@ -119,9 +166,13 @@ export function AppSidebar() {
       <Separator className="bg-sidebar-border" />
 
       {/* Nav */}
-      <nav className="flex flex-1 flex-col gap-1 px-3 py-4" role="navigation" aria-label="Main navigation">
+      <nav
+        className="flex flex-1 flex-col gap-1 px-3 py-4"
+        role="navigation"
+        aria-label="Main navigation"
+      >
         {navItems.map((item) => {
-          const isActive = pathname === item.href
+          const isActive = pathname === item.href;
           return (
             <Link
               key={item.href}
@@ -131,15 +182,39 @@ export function AppSidebar() {
                 "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
               )}
               aria-current={isActive ? "page" : undefined}
             >
               <item.icon className="size-4 shrink-0" />
               {item.label}
             </Link>
-          )
+          );
         })}
+
+        <div className="mt-auto pt-2">
+          <Separator className="mb-2 bg-sidebar-border" />
+          {bottomNavItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setSwitcherOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+                )}
+                aria-current={isActive ? "page" : undefined}
+              >
+                <item.icon className="size-4 shrink-0" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
 
       <Separator className="bg-sidebar-border" />
@@ -159,11 +234,13 @@ export function AppSidebar() {
           className="p-2 rounded-md hover:bg-sidebar-accent transition-colors"
           aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
         >
-          {dark
-            ? <Sun className="size-4 text-[#D4A017]" />
-            : <Moon className="size-4 text-sidebar-foreground/60" />}
+          {dark ? (
+            <Sun className="size-4 text-[#D4A017]" />
+          ) : (
+            <Moon className="size-4 text-sidebar-foreground/60" />
+          )}
         </button>
       </div>
     </aside>
-  )
+  );
 }

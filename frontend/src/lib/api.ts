@@ -40,6 +40,13 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+export async function apiGetBlob(path: string): Promise<Blob> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE_URL}${path}`, { headers });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.blob();
+}
+
 export async function apiDelete<T>(path: string): Promise<T> {
   const user = auth.currentUser;
   if (!user) throw new Error("Not authenticated");

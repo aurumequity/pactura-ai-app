@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { apiPost } from "@/lib/api";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -19,7 +20,7 @@ interface GapItem {
 }
 
 interface GapCheckResult {
-  framework: FrameworkKey;
+  framework: string;
   runAt?: { _seconds: number } | null;
   gaps: GapItem[];
 }
@@ -43,26 +44,23 @@ const FRAMEWORKS: { value: FrameworkKey; label: string }[] = [
 
 const STATUS_CONFIG: Record<
   GapStatus,
-  { label: string; dotClass: string; badgeClass: string; borderClass: string; bgClass: string }
+  { label: string; dotClass: string; borderClass: string; bgClass: string }
 > = {
   met: {
     label: "Met",
     dotClass: "bg-green-500",
-    badgeClass: "bg-green-100 text-green-800",
     borderClass: "border-l-green-500",
     bgClass: "bg-green-50",
   },
   partial: {
     label: "Partial",
     dotClass: "bg-yellow-400",
-    badgeClass: "bg-yellow-100 text-yellow-800",
     borderClass: "border-l-yellow-400",
     bgClass: "bg-yellow-50",
   },
   missing: {
     label: "Missing",
     dotClass: "bg-red-500",
-    badgeClass: "bg-red-100 text-red-800",
     borderClass: "border-l-red-500",
     bgClass: "bg-red-50",
   },
@@ -86,19 +84,27 @@ function GapRow({ gap }: { gap: GapItem }) {
           {gap.requirement}
         </span>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cfg.badgeClass}`}>
-            {cfg.label}
-          </span>
+          <StatusBadge status={gap.status} label={cfg.label} />
           {expanded ? (
-            <ChevronUp className="size-3.5 text-muted-foreground" aria-hidden="true" />
+            <ChevronUp
+              className="size-3.5 text-muted-foreground"
+              aria-hidden="true"
+            />
           ) : (
-            <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
+            <ChevronDown
+              className="size-3.5 text-muted-foreground"
+              aria-hidden="true"
+            />
           )}
         </div>
       </button>
 
       {expanded && (
-        <div className="mt-3 space-y-2" role="region" aria-label={`Details for ${gap.requirement}`}>
+        <div
+          className="mt-3 space-y-2"
+          role="region"
+          aria-label={`Details for ${gap.requirement}`}
+        >
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Evidence
@@ -110,7 +116,9 @@ function GapRow({ gap }: { gap: GapItem }) {
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Recommendation
               </p>
-              <p className="mt-0.5 text-sm text-foreground">{gap.recommendation}</p>
+              <p className="mt-0.5 text-sm text-foreground">
+                {gap.recommendation}
+              </p>
             </div>
           )}
         </div>
@@ -135,7 +143,9 @@ function SummaryBar({ gaps }: { gaps: GapItem[] }) {
             <span className={`size-2 rounded-full ${cfg.dotClass}`} />
             <span className="text-muted-foreground">
               {cfg.label}:{" "}
-              <span className="font-semibold text-foreground">{counts[status]}</span>
+              <span className="font-semibold text-foreground">
+                {counts[status]}
+              </span>
             </span>
           </span>
         );
@@ -149,9 +159,17 @@ function SummaryBar({ gaps }: { gaps: GapItem[] }) {
 
 function LoadingSkeleton() {
   return (
-    <div role="status" aria-label="Analyzing document against framework" className="px-4 py-5 space-y-3">
+    <div
+      role="status"
+      aria-label="Analyzing document against framework"
+      className="px-4 py-5 space-y-3"
+    >
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="animate-pulse flex items-center gap-3" aria-hidden="true">
+        <div
+          key={i}
+          className="animate-pulse flex items-center gap-3"
+          aria-hidden="true"
+        >
           <div className="size-2 rounded-full bg-muted flex-shrink-0" />
           <div className="flex-1 space-y-1.5">
             <div className="h-3 bg-muted rounded w-2/5" />
@@ -169,16 +187,25 @@ function LoadingSkeleton() {
 
 // ─── Main Panel ──────────────────────────────────────────────────────────────
 
-export function GapCheckPanel({ orgId, docId, savedGaps = {}, embedded = false }: GapCheckPanelProps) {
-  const [selectedFramework, setSelectedFramework] = useState<FrameworkKey>("SOC2");
+export function GapCheckPanel({
+  orgId,
+  docId,
+  savedGaps = {},
+  embedded = false,
+}: GapCheckPanelProps) {
+  const [selectedFramework, setSelectedFramework] =
+    useState<FrameworkKey>("SOC2");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [liveResults, setLiveResults] = useState<Record<string, GapCheckResult>>({});
+  const [liveResults, setLiveResults] = useState<
+    Record<string, GapCheckResult>
+  >({});
 
   const Outer: React.ElementType = embedded ? "div" : Card;
   const ContentWrapper: React.ElementType = embedded ? "div" : CardContent;
 
-  const activeResult = liveResults[selectedFramework] ?? savedGaps[selectedFramework] ?? null;
+  const activeResult =
+    liveResults[selectedFramework] ?? savedGaps[selectedFramework] ?? null;
   const alreadyRun = Boolean(activeResult);
 
   async function handleRunGapCheck() {
@@ -210,7 +237,9 @@ export function GapCheckPanel({ orgId, docId, savedGaps = {}, embedded = false }
           {activeResult?.runAt && (
             <span className="text-xs text-muted-foreground truncate">
               · Last run{" "}
-              {new Date(activeResult.runAt._seconds * 1000).toLocaleDateString()}
+              {new Date(
+                activeResult.runAt._seconds * 1000,
+              ).toLocaleDateString()}
             </span>
           )}
         </div>
@@ -222,7 +251,9 @@ export function GapCheckPanel({ orgId, docId, savedGaps = {}, embedded = false }
           <select
             id="gap-check-framework"
             value={selectedFramework}
-            onChange={(e) => setSelectedFramework(e.target.value as FrameworkKey)}
+            onChange={(e) =>
+              setSelectedFramework(e.target.value as FrameworkKey)
+            }
             disabled={loading}
             className="text-sm border border-input rounded-md px-2.5 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
           >
@@ -256,7 +287,10 @@ export function GapCheckPanel({ orgId, docId, savedGaps = {}, embedded = false }
       <ContentWrapper className="p-0">
         {/* Error */}
         {error && (
-          <div role="alert" className="flex items-center gap-2 px-4 py-3 bg-red-50 border-b border-red-100 text-sm text-red-700">
+          <div
+            role="alert"
+            className="flex items-center gap-2 px-4 py-3 bg-red-50 border-b border-red-100 text-sm text-red-700"
+          >
             <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
             {error}
           </div>

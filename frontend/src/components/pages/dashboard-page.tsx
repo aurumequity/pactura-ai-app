@@ -9,9 +9,17 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { FileText, AlertTriangle, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import {
+  FileText,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  ShieldCheck,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet } from "@/lib/api";
+import { getStatusClass, StatusBadge } from "@/components/ui/StatusBadge";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,7 +33,10 @@ interface Document {
     criticalCount: number;
     highCount: number;
   } | null;
-  complianceGaps?: Record<string, unknown> | null;
+  complianceGaps?: Record<
+    string,
+    { framework?: string; runAt?: { _seconds: number } | null }
+  > | null;
 }
 
 interface Remediation {
@@ -38,12 +49,6 @@ interface Remediation {
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-
-const STATUS_BADGE: Record<Remediation["status"], string> = {
-  open: "bg-blue-100 text-blue-800",
-  in_progress: "bg-yellow-100 text-yellow-800",
-  resolved: "bg-green-100 text-green-800",
-};
 
 const STATUS_LABEL: Record<Remediation["status"], string> = {
   open: "Open",
@@ -68,7 +73,10 @@ function formatDate(createdAt: Remediation["createdAt"]) {
   });
 }
 
-function firstName(displayName: string | null | undefined, email: string | null | undefined) {
+function firstName(
+  displayName: string | null | undefined,
+  email: string | null | undefined,
+) {
   if (displayName) return displayName.split(" ")[0];
   if (email) return email.split("@")[0];
   return "there";
@@ -130,7 +138,12 @@ export function DashboardPage() {
   const totalContracts = documents.length;
   const pendingReview = documents.filter((d) => !d.auditSummary).length;
   const flaggedClauses = documents.reduce((sum, d) => {
-    return sum + (d.anomalyReport ? d.anomalyReport.criticalCount + d.anomalyReport.highCount : 0);
+    return (
+      sum +
+      (d.anomalyReport
+        ? d.anomalyReport.criticalCount + d.anomalyReport.highCount
+        : 0)
+    );
   }, 0);
   const completed = documents.filter(
     (d) =>
@@ -172,10 +185,54 @@ export function DashboardPage() {
     },
   ];
 
-  // ─── Recent activity: latest 5 remediations by createdAt desc ───────────────
+  // ─── Recent activity: remediations + gap checks, latest 5 ──────────────────
   const docNameById = Object.fromEntries(documents.map((d) => [d.id, d.name]));
-  const recentRemediations = [...remediations]
-    .sort((a, b) => (b.createdAt?._seconds ?? 0) - (a.createdAt?._seconds ?? 0))
+
+  type ActivityItem =
+    | {
+        kind: "remediation";
+        id: string;
+        title: string;
+        docId: string;
+        status: Remediation["status"];
+        severity: Remediation["severity"];
+        ts: number;
+      }
+    | {
+        kind: "gap-check";
+        id: string;
+        docId: string;
+        docName: string;
+        framework: string;
+        ts: number;
+      };
+
+  const remediationEvents: ActivityItem[] = remediations.map((r) => ({
+    kind: "remediation",
+    id: r.id,
+    title: r.title,
+    docId: r.documentId,
+    status: r.status,
+    severity: r.severity,
+    ts: r.createdAt?._seconds ?? 0,
+  }));
+
+  const gapCheckEvents: ActivityItem[] = documents.flatMap((d) => {
+    if (!d.complianceGaps) return [];
+    return Object.entries(d.complianceGaps)
+      .filter(([, check]) => check?.runAt?._seconds)
+      .map(([key, check]) => ({
+        kind: "gap-check" as const,
+        id: `${d.id}-${key}`,
+        docId: d.id,
+        docName: d.name,
+        framework: check.framework ?? key,
+        ts: check.runAt!._seconds,
+      }));
+  });
+
+  const recentActivity = [...remediationEvents, ...gapCheckEvents]
+    .sort((a, b) => b.ts - a.ts)
     .slice(0, 5);
 
   return (
@@ -193,7 +250,10 @@ export function DashboardPage() {
 
       {/* Error */}
       {error && (
-        <div role="alert" className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
           <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
           {error}
         </div>
@@ -211,13 +271,21 @@ export function DashboardPage() {
                 tabIndex={0}
                 aria-label={`View ${stat.title} documents`}
                 onClick={() => router.push(stat.route)}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); router.push(stat.route); } }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(stat.route);
+                  }
+                }}
               >
                 <CardHeader className="flex flex-row items-center justify-between pb-0">
                   <CardDescription className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     {stat.title}
                   </CardDescription>
-                  <stat.icon className="size-4 text-accent" aria-hidden="true" />
+                  <stat.icon
+                    className="size-4 text-accent"
+                    aria-hidden="true"
+                  />
                 </CardHeader>
                 <CardContent>
                   <CardTitle className="text-3xl font-bold tabular-nums text-foreground">
@@ -236,7 +304,7 @@ export function DashboardPage() {
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
           <CardDescription>
-            Latest remediation items across all documents.
+            Latest remediations and gap checks across all documents.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -253,36 +321,76 @@ export function DashboardPage() {
                 </div>
               ))}
             </div>
-          ) : recentRemediations.length === 0 ? (
+          ) : recentActivity.length === 0 ? (
             <div className="flex h-48 items-center justify-center rounded-b-lg border-t border-dashed border-border">
               <p className="text-sm text-muted-foreground">
-                No remediations yet — run a gap check to generate items.
+                No activity yet — run a gap check to generate items.
               </p>
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {recentRemediations.map((rem) => (
-                <div key={rem.id} className="flex items-center gap-4 px-6 py-4">
-                  <span
-                    className={`size-2 flex-shrink-0 rounded-full ${SEVERITY_DOT[rem.severity] ?? "bg-muted"}`}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {rem.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {docNameById[rem.documentId] ?? rem.documentId}
-                      {" · "}
-                      {formatDate(rem.createdAt)}
-                    </p>
-                  </div>
-                  <span
-                    className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[rem.status] ?? "bg-secondary text-muted-foreground"}`}
+              {recentActivity.map((item) =>
+                item.kind === "remediation" ? (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-4 px-6 py-4"
                   >
-                    {STATUS_LABEL[rem.status] ?? rem.status}
-                  </span>
-                </div>
-              ))}
+                    <span
+                      className={`size-2 flex-shrink-0 rounded-full ${SEVERITY_DOT[item.severity] ?? "bg-muted"}`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {item.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {docNameById[item.docId] ?? item.docId}
+                        {" · "}
+                        {item.ts
+                          ? new Date(item.ts * 1000).toLocaleDateString(
+                              undefined,
+                              { month: "short", day: "numeric" },
+                            )
+                          : "—"}
+                      </p>
+                    </div>
+                    <StatusBadge
+                      status={item.status}
+                      label={STATUS_LABEL[item.status] ?? item.status}
+                      className="flex-shrink-0"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-4 px-6 py-4"
+                  >
+                    <ShieldCheck
+                      className="size-3.5 flex-shrink-0 text-accent"
+                      aria-hidden="true"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        Gap check: {item.framework}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.docName}
+                        {" · "}
+                        {item.ts
+                          ? new Date(item.ts * 1000).toLocaleDateString(
+                              undefined,
+                              { month: "short", day: "numeric" },
+                            )
+                          : "—"}
+                      </p>
+                    </div>
+                    <StatusBadge
+                      status="gap-check"
+                      label="Gap Check"
+                      className="flex-shrink-0"
+                    />
+                  </div>
+                ),
+              )}
             </div>
           )}
         </CardContent>
