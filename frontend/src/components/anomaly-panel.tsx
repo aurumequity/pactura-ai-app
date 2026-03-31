@@ -4,13 +4,25 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type React from "react";
-import { Loader2, AlertCircle, AlertTriangle, Info, XCircle, CheckCircle2 } from "lucide-react";
+import {
+  Loader2,
+  AlertCircle,
+  AlertTriangle,
+  Info,
+  XCircle,
+  CheckCircle2,
+} from "lucide-react";
 import { apiPost } from "@/lib/api";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type AnomalySeverity = "low" | "medium" | "high" | "critical";
-type AnomalyType = "unusual_clause" | "missing_clause" | "conflicting_terms" | "non_standard_language";
+type AnomalyType =
+  | "unusual_clause"
+  | "missing_clause"
+  | "conflicting_terms"
+  | "non_standard_language";
 
 interface Anomaly {
   type: AnomalyType;
@@ -41,20 +53,21 @@ interface AnomalyPanelProps {
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const SEVERITY_CONFIG: Record<AnomalySeverity, {
-  label: string;
-  bg: string;
-  border: string;
-  badge: string;
-  dot: string;
-  icon: React.ElementType;
-  iconColor: string;
-}> = {
+const SEVERITY_CONFIG: Record<
+  AnomalySeverity,
+  {
+    label: string;
+    bg: string;
+    border: string;
+    dot: string;
+    icon: React.ElementType;
+    iconColor: string;
+  }
+> = {
   critical: {
     label: "Critical",
     bg: "bg-red-50",
     border: "border-l-red-500",
-    badge: "bg-red-100 text-red-800",
     dot: "bg-red-500",
     icon: XCircle,
     iconColor: "text-red-500",
@@ -63,7 +76,6 @@ const SEVERITY_CONFIG: Record<AnomalySeverity, {
     label: "High",
     bg: "bg-orange-50",
     border: "border-l-orange-500",
-    badge: "bg-orange-100 text-orange-800",
     dot: "bg-orange-500",
     icon: AlertCircle,
     iconColor: "text-orange-500",
@@ -72,7 +84,6 @@ const SEVERITY_CONFIG: Record<AnomalySeverity, {
     label: "Medium",
     bg: "bg-yellow-50",
     border: "border-l-yellow-400",
-    badge: "bg-yellow-100 text-yellow-800",
     dot: "bg-yellow-400",
     icon: AlertTriangle,
     iconColor: "text-yellow-500",
@@ -81,7 +92,6 @@ const SEVERITY_CONFIG: Record<AnomalySeverity, {
     label: "Low",
     bg: "bg-blue-50",
     border: "border-l-blue-400",
-    badge: "bg-blue-100 text-blue-800",
     dot: "bg-blue-400",
     icon: Info,
     iconColor: "text-blue-500",
@@ -110,39 +120,55 @@ function AnomalyRow({ anomaly }: { anomaly: Anomaly }) {
         className="flex w-full items-start gap-3 text-left"
         onClick={() => setExpanded((prev) => !prev)}
       >
-        <Icon className={`size-4 mt-0.5 flex-shrink-0 ${cfg.iconColor}`} aria-hidden="true" />
+        <Icon
+          className={`size-4 mt-0.5 flex-shrink-0 ${cfg.iconColor}`}
+          aria-hidden="true"
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-foreground">{anomaly.title}</span>
-            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${cfg.badge}`}>
-              {cfg.label}
+            <span className="text-sm font-medium text-foreground">
+              {anomaly.title}
             </span>
+            <StatusBadge status={anomaly.severity} label={cfg.label} />
             <span className="text-xs text-muted-foreground">
               {TYPE_LABELS[anomaly.type]}
             </span>
           </div>
           {anomaly.location && (
-            <p className="text-xs text-muted-foreground mt-0.5">{anomaly.location}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {anomaly.location}
+            </p>
           )}
         </div>
-        <span className="text-xs text-muted-foreground flex-shrink-0" aria-hidden="true">
+        <span
+          className="text-xs text-muted-foreground flex-shrink-0"
+          aria-hidden="true"
+        >
           {expanded ? "▲" : "▼"}
         </span>
       </button>
 
       {expanded && (
-        <div className="mt-3 ml-7 space-y-2" role="region" aria-label={`Details for ${anomaly.title}`}>
+        <div
+          className="mt-3 ml-7 space-y-2"
+          role="region"
+          aria-label={`Details for ${anomaly.title}`}
+        >
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Finding
             </p>
-            <p className="mt-0.5 text-sm text-foreground">{anomaly.description}</p>
+            <p className="mt-0.5 text-sm text-foreground">
+              {anomaly.description}
+            </p>
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Recommendation
             </p>
-            <p className="mt-0.5 text-sm text-foreground">{anomaly.recommendation}</p>
+            <p className="mt-0.5 text-sm text-foreground">
+              {anomaly.recommendation}
+            </p>
           </div>
         </div>
       )}
@@ -162,13 +188,17 @@ function SummaryBar({ report }: { report: AnomalyReport }) {
         {report.criticalCount > 0 && (
           <span className="flex items-center gap-1 text-xs">
             <span className="size-2 rounded-full bg-red-500" />
-            <span className="font-semibold text-red-700">{report.criticalCount} critical</span>
+            <span className="font-semibold text-red-700">
+              {report.criticalCount} critical
+            </span>
           </span>
         )}
         {report.highCount > 0 && (
           <span className="flex items-center gap-1 text-xs">
             <span className="size-2 rounded-full bg-orange-500" />
-            <span className="font-semibold text-orange-700">{report.highCount} high</span>
+            <span className="font-semibold text-orange-700">
+              {report.highCount} high
+            </span>
           </span>
         )}
         {report.mediumCount > 0 && (
@@ -198,9 +228,17 @@ function SummaryBar({ report }: { report: AnomalyReport }) {
 
 function LoadingSkeleton() {
   return (
-    <div role="status" aria-label="Analyzing document for anomalies" className="px-4 py-5 space-y-3">
+    <div
+      role="status"
+      aria-label="Analyzing document for anomalies"
+      className="px-4 py-5 space-y-3"
+    >
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="animate-pulse flex items-start gap-3" aria-hidden="true">
+        <div
+          key={i}
+          className="animate-pulse flex items-start gap-3"
+          aria-hidden="true"
+        >
           <div className="size-4 rounded-full bg-muted flex-shrink-0 mt-0.5" />
           <div className="flex-1 space-y-1.5">
             <div className="h-3 bg-muted rounded w-2/5" />
@@ -218,7 +256,12 @@ function LoadingSkeleton() {
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
-export function AnomalyPanel({ orgId, docId, savedReport, embedded = false }: AnomalyPanelProps) {
+export function AnomalyPanel({
+  orgId,
+  docId,
+  savedReport,
+  embedded = false,
+}: AnomalyPanelProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [liveReport, setLiveReport] = useState<AnomalyReport | null>(null);
@@ -239,7 +282,8 @@ export function AnomalyPanel({ orgId, docId, savedReport, embedded = false }: An
       );
       setLiveReport(data);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Anomaly detection failed.";
+      const message =
+        err instanceof Error ? err.message : "Anomaly detection failed.";
       setError(message);
     } finally {
       setLoading(false);
@@ -251,7 +295,9 @@ export function AnomalyPanel({ orgId, docId, savedReport, embedded = false }: An
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 border-b border-border bg-secondary/20 rounded-t-lg">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-sm font-semibold text-foreground">Anomaly Detection</span>
+          <span className="text-sm font-semibold text-foreground">
+            Anomaly Detection
+          </span>
           {report?.runAt && (
             <span className="text-xs text-muted-foreground truncate">
               · Last run{" "}
@@ -283,7 +329,10 @@ export function AnomalyPanel({ orgId, docId, savedReport, embedded = false }: An
       <ContentWrapper className="p-0">
         {/* Error */}
         {error && (
-          <div role="alert" className="flex items-center gap-2 px-4 py-3 bg-red-50 border-b border-red-100 text-sm text-red-700">
+          <div
+            role="alert"
+            className="flex items-center gap-2 px-4 py-3 bg-red-50 border-b border-red-100 text-sm text-red-700"
+          >
             <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
             {error}
           </div>

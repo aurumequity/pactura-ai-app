@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebaseClient";
+import { PacturaLogo } from "@/components/ui/PacturaLogo";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -30,7 +31,8 @@ export default function SignInPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1E2F5C]">
       {/* Background subtle pattern */}
-      <div className="absolute inset-0 opacity-5"
+      <div
+        className="absolute inset-0 opacity-5"
         style={{
           backgroundImage: `repeating-linear-gradient(
             45deg,
@@ -38,31 +40,40 @@ export default function SignInPage() {
             #D4A017 1px,
             transparent 1px,
             transparent 60px
-          )`
+          )`,
         }}
       />
 
       <div className="relative w-full max-w-md px-6">
         {/* Logo / Brand */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-[#D4A017] mb-4 shadow-lg">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z"
-                fill="#1E2F5C" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Pactura</h1>
-          <p className="text-sm text-white/50 mt-1">Contract Intelligence Platform</p>
+        <div className="flex flex-col items-center mb-10">
+          <PacturaLogo size="lg" variant="auto" priority />
+          <h1
+            className="mt-4 text-2xl tracking-widest font-semibold"
+            style={{ color: "#C9A84C", fontVariant: "small-caps" }}
+          >
+            PACTURA.AI
+          </h1>
+          <p className="text-sm text-white/50 mt-1">
+            Contract Intelligence Platform
+          </p>
         </div>
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h2 className="text-xl font-semibold text-[#1E2F5C] mb-1">Welcome back</h2>
-          <p className="text-sm text-gray-500 mb-6">Sign in to your organization</p>
+          <h2 className="text-xl font-semibold text-[#1E2F5C] mb-1">
+            Welcome back
+          </h2>
+          <p className="text-sm text-gray-500 mb-6">
+            Sign in to your organization
+          </p>
 
           <form onSubmit={onSubmit} className="space-y-5">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-[#1E2F5C]" htmlFor="email">
+              <label
+                className="text-sm font-medium text-[#1E2F5C]"
+                htmlFor="email"
+              >
                 Email address
               </label>
               <input
@@ -77,7 +88,10 @@ export default function SignInPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-[#1E2F5C]" htmlFor="password">
+              <label
+                className="text-sm font-medium text-[#1E2F5C]"
+                htmlFor="password"
+              >
                 Password
               </label>
               <input

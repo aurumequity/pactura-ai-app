@@ -3,8 +3,16 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, AlertCircle, ShieldAlert, ShieldCheck, ShieldX, Shield } from "lucide-react";
+import {
+  Loader2,
+  AlertCircle,
+  ShieldAlert,
+  ShieldCheck,
+  ShieldX,
+  Shield,
+} from "lucide-react";
 import { apiPost } from "@/lib/api";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -46,7 +54,6 @@ const RISK_CONFIG = {
     bg: "bg-green-50",
     border: "border-green-200",
     text: "text-green-800",
-    badge: "bg-green-100 text-green-800",
     icon: ShieldCheck,
     iconColor: "text-green-600",
   },
@@ -55,7 +62,6 @@ const RISK_CONFIG = {
     bg: "bg-yellow-50",
     border: "border-yellow-200",
     text: "text-yellow-800",
-    badge: "bg-yellow-100 text-yellow-800",
     icon: Shield,
     iconColor: "text-yellow-600",
   },
@@ -64,7 +70,6 @@ const RISK_CONFIG = {
     bg: "bg-orange-50",
     border: "border-orange-200",
     text: "text-orange-800",
-    badge: "bg-orange-100 text-orange-800",
     icon: ShieldAlert,
     iconColor: "text-orange-600",
   },
@@ -73,7 +78,6 @@ const RISK_CONFIG = {
     bg: "bg-red-50",
     border: "border-red-200",
     text: "text-red-800",
-    badge: "bg-red-100 text-red-800",
     icon: ShieldX,
     iconColor: "text-red-600",
   },
@@ -105,14 +109,20 @@ function LoadingSkeleton() {
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
-export function AuditSummaryPanel({ orgId, docId, savedSummary }: AuditSummaryPanelProps) {
+export function AuditSummaryPanel({
+  orgId,
+  docId,
+  savedSummary,
+}: AuditSummaryPanelProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [liveSummary, setLiveSummary] = useState<AuditSummary | null>(null);
 
   const summary = liveSummary ?? savedSummary ?? null;
   const alreadyRun = Boolean(summary);
-  const cfg = summary ? RISK_CONFIG[summary.riskLevel] ?? RISK_CONFIG.medium : null;
+  const cfg = summary
+    ? (RISK_CONFIG[summary.riskLevel] ?? RISK_CONFIG.medium)
+    : null;
   const RiskIcon = cfg?.icon ?? Shield;
 
   async function handleGenerate() {
@@ -125,7 +135,10 @@ export function AuditSummaryPanel({ orgId, docId, savedSummary }: AuditSummaryPa
       );
       setLiveSummary(data);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to generate audit summary.";
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to generate audit summary.";
       setError(message);
     } finally {
       setLoading(false);
@@ -137,7 +150,9 @@ export function AuditSummaryPanel({ orgId, docId, savedSummary }: AuditSummaryPa
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 border-b border-border bg-secondary/20 rounded-t-lg">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-sm font-semibold text-foreground">Audit Summary</span>
+          <span className="text-sm font-semibold text-foreground">
+            Audit Summary
+          </span>
           {summary?.runAt && (
             <span className="text-xs text-muted-foreground truncate">
               · Generated{" "}
@@ -183,7 +198,9 @@ export function AuditSummaryPanel({ orgId, docId, savedSummary }: AuditSummaryPa
           <div className="divide-y divide-border">
             {/* Risk score banner */}
             <div className={`px-4 py-4 ${cfg.bg} flex items-center gap-4`}>
-              <div className={`flex items-center justify-center size-12 rounded-full bg-white shadow-sm border ${cfg.border}`}>
+              <div
+                className={`flex items-center justify-center size-12 rounded-full bg-white shadow-sm border ${cfg.border}`}
+              >
                 <RiskIcon className={`size-6 ${cfg.iconColor}`} />
               </div>
               <div className="flex-1">
@@ -191,9 +208,7 @@ export function AuditSummaryPanel({ orgId, docId, savedSummary }: AuditSummaryPa
                   <span className={`text-2xl font-bold ${cfg.text}`}>
                     {summary.riskScore}/10
                   </span>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cfg.badge}`}>
-                    {cfg.label}
-                  </span>
+                  <StatusBadge status={summary.riskLevel} label={cfg.label} />
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Based on {summary.basedOnFrameworks.join(", ")} analysis
@@ -228,9 +243,15 @@ export function AuditSummaryPanel({ orgId, docId, savedSummary }: AuditSummaryPa
                           {fc.framework}
                         </span>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <span className="text-green-600 font-medium">{fc.met}✓</span>
-                          <span className="text-yellow-600 font-medium">{fc.partial}~</span>
-                          <span className="text-red-600 font-medium">{fc.missing}✗</span>
+                          <span className="text-green-600 font-medium">
+                            {fc.met}✓
+                          </span>
+                          <span className="text-yellow-600 font-medium">
+                            {fc.partial}~
+                          </span>
+                          <span className="text-red-600 font-medium">
+                            {fc.missing}✗
+                          </span>
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground truncate">
@@ -250,12 +271,18 @@ export function AuditSummaryPanel({ orgId, docId, savedSummary }: AuditSummaryPa
                 </p>
                 <div className="space-y-2">
                   {summary.remediationActions.map((action, i) => {
-                    const pc = PRIORITY_CONFIG[action.priority] ?? PRIORITY_CONFIG.medium;
+                    const pc =
+                      PRIORITY_CONFIG[action.priority] ??
+                      PRIORITY_CONFIG.medium;
                     return (
                       <div key={i} className="flex items-start gap-3">
-                        <span className={`mt-1.5 size-2 rounded-full flex-shrink-0 ${pc.dot}`} />
+                        <span
+                          className={`mt-1.5 size-2 rounded-full flex-shrink-0 ${pc.dot}`}
+                        />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-foreground">{action.action}</p>
+                          <p className="text-sm text-foreground">
+                            {action.action}
+                          </p>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {action.framework} · {pc.label} priority
                           </p>

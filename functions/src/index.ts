@@ -1,5 +1,6 @@
 import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { Resend } from "resend";
 
 admin.initializeApp();
 
@@ -20,7 +21,7 @@ async function writeAuditLog(params: {
   role: string;
   result: "SUCCESS" | "FAILURE";
   reason?: string;
-}) {
+}): Promise<void> {
   await admin
     .firestore()
     .collection(`orgs/${params.orgId}/auditLog`)
@@ -31,11 +32,121 @@ async function writeAuditLog(params: {
     });
 }
 
+// ── Helper: Build branded invite email HTML ───────────────────────────────────
+function buildInviteEmailHtml(params: {
+  orgName: string;
+  role: Role;
+  inviteUrl: string;
+}): string {
+  const { orgName, role, inviteUrl } = params;
+  const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>You've been invited to ${orgName} on Pactura.ai</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0A1628;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0A1628;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+
+          <!-- Logo -->
+          <tr>
+            <td align="center" style="padding-bottom:32px;">
+              <img
+                src="https://pactura.ai/pactura-logo-dark.png"
+                alt="Pactura.ai"
+                width="96"
+                height="96"
+                style="display:block;object-fit:contain;"
+              />
+              <p style="margin:8px 0 0;font-size:22px;font-weight:700;color:#C9A84C;letter-spacing:0.5px;">
+                Pactura.ai
+              </p>
+            </td>
+          </tr>
+
+          <!-- Card -->
+          <tr>
+            <td style="background-color:#112040;border-radius:12px;border:1px solid #1e3560;padding:40px 36px;">
+
+              <!-- Heading -->
+              <p style="margin:0 0 8px;font-size:24px;font-weight:700;color:#FFFFFF;line-height:1.3;">
+                You've been invited
+              </p>
+              <p style="margin:0 0 28px;font-size:15px;color:#94a3b8;line-height:1.6;">
+                You have been invited to join
+                <strong style="color:#FFFFFF;">${orgName}</strong>
+                on Pactura.ai as a&nbsp;<strong style="color:#C9A84C;">${roleLabel}</strong>.
+              </p>
+
+              <!-- Role badge -->
+              <table cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+                <tr>
+                  <td style="background-color:#0A1628;border:1px solid #C9A84C33;border-radius:8px;padding:14px 20px;">
+                    <p style="margin:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#C9A84C;">
+                      Your Role
+                    </p>
+                    <p style="margin:4px 0 0;font-size:17px;font-weight:700;color:#FFFFFF;">
+                      ${roleLabel}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA -->
+              <table cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="center">
+                    <a
+                      href="${inviteUrl}"
+                      style="display:inline-block;background-color:#C9A84C;color:#0A1628;font-size:15px;font-weight:700;text-decoration:none;padding:14px 36px;border-radius:8px;letter-spacing:0.3px;"
+                    >
+                      Accept Invitation
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Divider -->
+              <hr style="border:none;border-top:1px solid #1e3560;margin:32px 0;" />
+
+              <!-- Footer note -->
+              <p style="margin:0;font-size:12px;color:#64748b;line-height:1.6;text-align:center;">
+                If you weren't expecting this invitation, you can safely ignore this email.<br/>
+                Questions? Contact us at
+                <a href="mailto:info@pactura.ai" style="color:#C9A84C;text-decoration:none;">info@pactura.ai</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Bottom brand -->
+          <tr>
+            <td align="center" style="padding-top:28px;">
+              <p style="margin:0;font-size:11px;color:#334155;">
+                © ${new Date().getFullYear()} Aurum Equity LLC · Pactura.ai
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 // ── Cloud Function ─────────────────────────────────────────────────────────────
 export const inviteUserToOrg = onCall(
   {
     cors: true,
     region: "us-central1",
+    secrets: ["RESEND_API_KEY"],
   },
   async (request) => {
     // 1. Auth check
@@ -99,7 +210,7 @@ export const inviteUserToOrg = onCall(
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // 5. Write the success audit log (Pillar 1)
+    // 5. Write the success invite audit log (Pillar 1)
     await writeAuditLog({
       orgId,
       actorUid: requesterUid,
@@ -107,6 +218,49 @@ export const inviteUserToOrg = onCall(
       targetEmail: email,
       role,
       result: "SUCCESS",
+    });
+
+    // 6. Send the transactional invite email via Resend
+    const orgName: string =
+      typeof orgData.name === "string" ? orgData.name : orgId;
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
+    let emailResult: "SUCCESS" | "FAILURE" = "SUCCESS";
+    let emailFailReason: string | undefined;
+
+    try {
+      const { error } = await resend.emails.send({
+        from: "noreply@pactura.ai",
+        to: email.toLowerCase(),
+        subject: `You've been invited to ${orgName} on Pactura.ai`,
+        html: buildInviteEmailHtml({
+          orgName,
+          role,
+          inviteUrl: "https://pactura.ai/sign-in",
+        }),
+      });
+
+      if (error) {
+        emailResult = "FAILURE";
+        emailFailReason = error.message;
+        console.error("[inviteUserToOrg] Resend error:", error);
+      }
+    } catch (err: unknown) {
+      emailResult = "FAILURE";
+      emailFailReason =
+        err instanceof Error ? err.message : "Unknown email error";
+      console.error("[inviteUserToOrg] Email send exception:", err);
+    }
+
+    // 7. Write EMAIL_INVITE_SENT audit log regardless of outcome
+    await writeAuditLog({
+      orgId,
+      actorUid: requesterUid,
+      action: "EMAIL_INVITE_SENT",
+      targetEmail: email,
+      role,
+      result: emailResult,
+      reason: emailFailReason,
     });
 
     return { success: true, memberId: memberRef.id };

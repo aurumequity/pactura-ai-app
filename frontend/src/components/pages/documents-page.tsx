@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, AlertCircle, Loader2, X } from "lucide-react";
 import { DocumentCard } from "@/components/document-card";
-import { apiGet, apiDelete, apiGetBlob } from "@/lib/api";
+import { apiGet, apiPost, apiDelete, apiGetBlob } from "@/lib/api";
 import { storage } from "@/lib/firebaseClient";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
@@ -21,12 +21,52 @@ interface Document {
   version: number;
   previousVersionId?: string;
   isLatestVersion: boolean;
-  complianceGaps?: Record<string, unknown> | null;
+  complianceGaps?: Record<
+    string,
+    {
+      framework: string;
+      runAt?: { _seconds: number } | null;
+      gaps: {
+        requirement: string;
+        status: "met" | "partial" | "missing";
+        evidence: string;
+        recommendation: string;
+      }[];
+    }
+  > | null;
   anomalyReport?: {
+    documentType: string;
+    totalAnomalies: number;
     criticalCount: number;
     highCount: number;
+    mediumCount: number;
+    lowCount: number;
+    anomalies: {
+      type:
+        | "unusual_clause"
+        | "missing_clause"
+        | "conflicting_terms"
+        | "non_standard_language";
+      severity: "low" | "medium" | "high" | "critical";
+      title: string;
+      description: string;
+      recommendation: string;
+      location?: string;
+    }[];
   } | null;
-  auditSummary?: unknown | null;
+  auditSummary?: {
+    contractType: string;
+    keyParties: string[];
+    complianceFlags: {
+      label: string;
+      severity: "info" | "warning" | "critical";
+    }[];
+    summary: string;
+    effectiveDate?: string | null;
+    termLength?: string | null;
+    totalValue?: string | null;
+    keyObligations?: string[];
+  } | null;
 }
 
 const FILTER_LABELS: Record<string, string> = {
@@ -34,9 +74,6 @@ const FILTER_LABELS: Record<string, string> = {
   flagged: "Flagged Clauses",
   completed: "Completed",
 };
-
-
-
 
 export function DocumentsPage() {
   const { org } = useAuth();
@@ -86,12 +123,12 @@ export function DocumentsPage() {
           "state_changed",
           (snapshot) => {
             const progress = Math.round(
-              (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+              (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
             );
             setUploadProgress(progress);
           },
           reject,
-          resolve
+          resolve,
         );
       });
 
@@ -112,15 +149,17 @@ export function DocumentsPage() {
 
   async function handleDownloadEvidence(docId: string) {
     try {
-      const blob = await apiGetBlob(`/orgs/${ORG_ID}/documents/${docId}/evidence-package`);
+      const blob = await apiGetBlob(
+        `/orgs/${ORG_ID}/documents/${docId}/evidence-package`,
+      );
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `evidence-package-${docId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      setError('Evidence package download failed. Please try again.');
+      setError("Evidence package download failed. Please try again.");
     }
   }
 
@@ -150,9 +189,23 @@ export function DocumentsPage() {
   }
 
   const filteredDocs = (() => {
-    if (activeFilter === "pending") return documents.filter((d) => !d.auditSummary);
-    if (activeFilter === "flagged") return documents.filter((d) => d.anomalyReport && (d.anomalyReport.criticalCount + d.anomalyReport.highCount) > 0);
-    if (activeFilter === "completed") return documents.filter((d) => d.isLatestVersion === true && d.auditSummary != null && d.anomalyReport != null && d.complianceGaps != null && Object.keys(d.complianceGaps).length > 0);
+    if (activeFilter === "pending")
+      return documents.filter((d) => !d.auditSummary);
+    if (activeFilter === "flagged")
+      return documents.filter(
+        (d) =>
+          d.anomalyReport &&
+          d.anomalyReport.criticalCount + d.anomalyReport.highCount > 0,
+      );
+    if (activeFilter === "completed")
+      return documents.filter(
+        (d) =>
+          d.isLatestVersion === true &&
+          d.auditSummary != null &&
+          d.anomalyReport != null &&
+          d.complianceGaps != null &&
+          Object.keys(d.complianceGaps).length > 0,
+      );
     return documents;
   })();
 
@@ -193,8 +246,9 @@ export function DocumentsPage() {
       {activeFilter && FILTER_LABELS[activeFilter] && (
         <div className="flex items-center gap-2 rounded-lg border border-[#D4A017]/40 bg-[#D4A017]/10 px-4 py-2.5 text-sm text-foreground">
           <span>
-            Showing <span className="font-semibold">{FILTER_LABELS[activeFilter]}</span>
-            {" "}({filteredDocs.length} of {documents.length})
+            Showing{" "}
+            <span className="font-semibold">{FILTER_LABELS[activeFilter]}</span>{" "}
+            ({filteredDocs.length} of {documents.length})
           </span>
           <button
             onClick={() => router.push("/documents")}
@@ -209,7 +263,10 @@ export function DocumentsPage() {
 
       {/* Error */}
       {error && (
-        <div role="alert" className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
           <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
           {error}
         </div>
@@ -232,6 +289,7 @@ export function DocumentsPage() {
               deletingId={deletingId}
               onDelete={handleDelete}
               onDownloadEvidence={handleDownloadEvidence}
+              onAnalyzeComplete={fetchDocuments}
               orgId={ORG_ID}
               isChatOpen={openChatDocId === doc.id}
               onChatOpen={() => setOpenChatDocId(doc.id)}
@@ -242,23 +300,32 @@ export function DocumentsPage() {
       )}
 
       {/* Filtered empty state */}
-      {!loading && !error && filteredDocs.length === 0 && documents.length > 0 && activeFilter && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-sm font-medium text-foreground">No documents match this filter</p>
-          <button
-            onClick={() => router.push("/documents")}
-            className="mt-2 text-xs font-medium text-accent hover:underline"
-          >
-            Clear filter to see all documents
-          </button>
-        </div>
-      )}
+      {!loading &&
+        !error &&
+        filteredDocs.length === 0 &&
+        documents.length > 0 &&
+        activeFilter && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <p className="text-sm font-medium text-foreground">
+              No documents match this filter
+            </p>
+            <button
+              onClick={() => router.push("/documents")}
+              className="mt-2 text-xs font-medium text-accent hover:underline"
+            >
+              Clear filter to see all documents
+            </button>
+          </div>
+        )}
 
       {/* Empty state */}
       {!loading && !error && documents.length === 0 && (
         <Card
           className={`border-2 border-dashed transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-border"}`}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
         >

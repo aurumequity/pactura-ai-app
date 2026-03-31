@@ -3,6 +3,7 @@ import { db, app } from "@/lib/firebaseClient";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { Button } from "../ui/button";
+import { StatusBadge } from "../ui/StatusBadge";
 
 type Role = "analyst" | "auditor" | "viewer";
 
@@ -349,17 +350,7 @@ export const UserManagement = ({ orgId }: { orgId: string }) => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span
-                        className={`px-2.5 py-0.5 text-xs rounded-full border font-medium ${
-                          member.status === "invited"
-                            ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
-                            : member.status === "cancelled"
-                              ? "bg-red-500/10 text-red-500 border-red-500/20"
-                              : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                        }`}
-                      >
-                        {member.status || "active"}
-                      </span>
+                      <StatusBadge status={member.status || "active"} />
                     </td>
                     <td className="px-6 py-4 text-right whitespace-nowrap">
                       {member.status !== "cancelled" && (
