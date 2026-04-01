@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ChevronDown, ChevronUp, Mail, ShieldCheck, FileSearch, AlertTriangle, FileDown, ClipboardList } from "lucide-react";
+import { ChevronDown, ChevronUp, Mail, Phone, ShieldCheck, FileSearch, AlertTriangle, FileDown, ClipboardList } from "lucide-react";
 
 const SECTIONS = [
   {
@@ -157,13 +157,20 @@ export function HelpPage() {
             Reach out to the Pactura team for additional questions or to report an issue.
           </CardDescription>
         </CardHeader>
-        <CardFooter>
+        <CardFooter className="flex flex-wrap gap-4">
           <a
             href="mailto:info@pactura.ai"
             className="flex items-center gap-2 text-sm font-medium text-accent hover:underline"
           >
             <Mail className="size-4" aria-hidden="true" />
             info@pactura.ai
+          </a>
+          <a
+            href="tel:+17032020088"
+            className="flex items-center gap-2 text-sm font-medium text-accent hover:underline"
+          >
+            <Phone className="size-4" aria-hidden="true" />
+            (703) 202-0088
           </a>
         </CardFooter>
       </Card>

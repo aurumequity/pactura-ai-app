@@ -17,7 +17,7 @@ export function AppTopbar({ title }: { title: string }) {
     .slice(0, 2)
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-6">
+    <header className="glass-panel flex h-16 shrink-0 items-center justify-between border-b border-[rgba(201,168,76,0.2)] px-6">
       <h1 className="text-lg font-semibold tracking-tight text-foreground">
         {title}
       </h1>
@@ -25,7 +25,7 @@ export function AppTopbar({ title }: { title: string }) {
       <div className="flex items-center gap-4">
         {/* Org Name */}
         {org && (
-          <div className="flex items-center gap-2 rounded-md bg-secondary px-3 py-1.5">
+          <div className="flex items-center gap-2 rounded-md border border-[rgba(201,168,76,0.2)] bg-[rgba(201,168,76,0.06)] px-3 py-1.5">
             <Building2 className="size-3.5 text-muted-foreground" />
             <span className="text-xs font-medium text-foreground">{org.name}</span>
           </div>

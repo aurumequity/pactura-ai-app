@@ -205,7 +205,7 @@ export const UserManagement = ({ orgId }: { orgId: string }) => {
       {/* ── Invite Modal ── */}
       {isInviteOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-card border border-border p-8 rounded-xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+          <div className="glass-modal p-8 rounded-xl w-full max-w-md animate-in fade-in zoom-in duration-200">
             <h3 className="text-xl font-bold text-foreground mb-2">
               Invite Team Member
             </h3>
@@ -256,7 +256,7 @@ export const UserManagement = ({ orgId }: { orgId: string }) => {
       {/* ── Edit Role Modal ── */}
       {editingMember && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-card border border-border p-8 rounded-xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+          <div className="glass-modal p-8 rounded-xl w-full max-w-md animate-in fade-in zoom-in duration-200">
             <h3 className="text-xl font-bold text-foreground mb-1">
               Edit Access
             </h3>
@@ -321,7 +321,7 @@ export const UserManagement = ({ orgId }: { orgId: string }) => {
           </div>
         )}
 
-        <div className="rounded-xl overflow-x-auto border border-border bg-card">
+        <div className="glass-card rounded-xl overflow-x-auto">
           <table className="w-full text-left min-w-[640px]">
             <thead className="bg-muted text-muted-foreground uppercase text-xs">
               <tr>
