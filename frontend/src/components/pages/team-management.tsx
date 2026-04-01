@@ -55,6 +55,7 @@ export const UserManagement = ({ orgId }: { orgId: string }) => {
   const inviteUserFn = httpsCallable(functions, "inviteUserToOrg");
   const updateRoleFn = httpsCallable(functions, "updateMemberRole");
   const cancelInviteFn = httpsCallable(functions, "cancelMemberInvite");
+  const removeMemberFn = httpsCallable(functions, "removeMemberRecord");
 
   useEffect(() => {
     if (!orgId) return;
@@ -137,6 +138,20 @@ export const UserManagement = ({ orgId }: { orgId: string }) => {
         type: "error",
         message: err.message ?? "Failed to cancel invite.",
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteCancelled = async (member: Member) => {
+    if (!confirm(`Permanently remove ${member.email} from the list?`)) return;
+    setLoading(true);
+    try {
+      await removeMemberFn({ orgId, memberId: member.id });
+      setFeedback({ type: "success", message: `${member.email} removed.` });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to remove member.";
+      setFeedback({ type: "error", message });
     } finally {
       setLoading(false);
     }
@@ -368,14 +383,22 @@ export const UserManagement = ({ orgId }: { orgId: string }) => {
                         >
                           Cancel Invite
                         </button>
-                      ) : member.status !== "cancelled" ? (
+                      ) : member.status === "cancelled" ? (
+                        <button
+                          onClick={() => handleDeleteCancelled(member)}
+                          disabled={loading}
+                          className="text-destructive hover:text-destructive/80 text-sm font-medium transition-colors disabled:opacity-40"
+                        >
+                          Delete
+                        </button>
+                      ) : (
                         <button
                           onClick={() => handleRemove(member)}
                           className="text-destructive hover:text-destructive/80 text-sm font-medium transition-colors"
                         >
                           Remove
                         </button>
-                      ) : null}
+                      )}
                     </td>
                   </tr>
                 ))

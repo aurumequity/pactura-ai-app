@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { AppSidebar } from "@/components/app-sidebar";
+import { AiAssistant } from "@/components/ai-assistant";
 
 export default function DashboardLayout({
   children,
@@ -41,6 +42,7 @@ export default function DashboardLayout({
       <div id="main-content" className="flex flex-1 flex-col overflow-y-auto" tabIndex={-1}>
         {children}
       </div>
+      <AiAssistant />
     </div>
   );
 }

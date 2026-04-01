@@ -16,6 +16,8 @@ import {
   Clock,
   AlertCircle,
   ShieldCheck,
+  Shield,
+  Download,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -246,6 +248,52 @@ export function DashboardPage() {
           {"Here's an overview of your contract intelligence pipeline"}
           {org?.name ? ` at ${org.name}` : ""}.
         </p>
+      </div>
+
+      {/* Primary CTA — Evidence Package */}
+      <div
+        className="flex items-center justify-between gap-4 rounded-lg px-5 py-4"
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(201,168,76,0.08) 0%, rgba(201,168,76,0.03) 100%)",
+          border: "1px solid rgba(201,168,76,0.4)",
+        }}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(201,168,76,0.2) 0%, rgba(201,168,76,0.08) 100%)",
+              border: "1px solid rgba(201,168,76,0.35)",
+            }}
+            aria-hidden="true"
+          >
+            <Shield className="size-4 text-[#C9A84C]" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              Auditor Evidence Package
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Export a complete, audit-ready compliance report for external review
+            </p>
+          </div>
+        </div>
+        <button
+          aria-label="Generate auditor evidence package"
+          className="flex shrink-0 items-center gap-2 rounded px-4 py-2 text-sm font-semibold transition-all hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C] focus-visible:ring-offset-2"
+          style={{
+            background:
+              "linear-gradient(135deg, #C9A84C 0%, #a8893d 100%)",
+            color: "#0A1628",
+            boxShadow: "0 2px 12px rgba(201,168,76,0.3)",
+          }}
+          onClick={() => router.push("/documents")}
+        >
+          <Download className="size-3.5" aria-hidden="true" />
+          Generate Auditor Evidence Package
+        </button>
       </div>
 
       {/* Error */}

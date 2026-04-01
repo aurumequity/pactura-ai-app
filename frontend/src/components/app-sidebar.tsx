@@ -81,7 +81,7 @@ export function AppSidebar() {
         href="/dashboard"
         className="flex items-center gap-3 px-6 py-5 hover:opacity-80 transition-opacity"
       >
-        <PacturaLogo size="sm" variant="auto" priority />
+        <PacturaLogo size="sm" variant="dark" priority />
         <div className="flex flex-col">
           <span
             className="text-sm font-semibold tracking-tight"

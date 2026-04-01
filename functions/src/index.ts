@@ -381,3 +381,55 @@ export const cancelMemberInvite = onCall(
     return { success: true };
   },
 );
+
+export const removeMemberRecord = onCall(
+  { cors: true, region: "us-central1" },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated.");
+    }
+
+    const { orgId, memberId } = request.data as {
+      orgId: string;
+      memberId: string;
+    };
+    const requesterUid = request.auth.uid;
+
+    // RBAC: only org owner may permanently remove a member record
+    const orgDoc = await admin.firestore().collection("orgs").doc(orgId).get();
+    const orgData = orgDoc.data();
+
+    if (!orgData || orgData.ownerId !== requesterUid) {
+      throw new HttpsError(
+        "permission-denied",
+        "Only the Org Admin can remove member records.",
+      );
+    }
+
+    const memberRef = admin
+      .firestore()
+      .collection(`orgs/${orgId}/members`)
+      .doc(memberId);
+
+    const memberDoc = await memberRef.get();
+    const memberData = memberDoc.data();
+
+    if (!memberDoc.exists) {
+      throw new HttpsError("not-found", "Member record not found.");
+    }
+
+    // Audit log before hard delete so the action is always traceable (Pillar 1)
+    await writeAuditLog({
+      orgId,
+      actorUid: requesterUid,
+      action: "REMOVE_MEMBER_RECORD",
+      targetEmail: memberData?.email ?? memberId,
+      role: memberData?.role ?? "unknown",
+      result: "SUCCESS",
+    });
+
+    await memberRef.delete();
+
+    return { success: true };
+  },
+);

@@ -148,25 +148,25 @@ export function DocumentCard({
   return (
     <Card className="glass-card">
       {/* Header row */}
-      <CardContent className="flex items-center justify-between py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-lg bg-secondary">
+      <CardContent className="flex items-start justify-between gap-3 py-4 sm:items-center">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary">
             <FileText className="size-5 text-muted-foreground" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-foreground">{doc.name}</p>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-foreground">{doc.name}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <StatusBadge status={`v${doc.version ?? 1}`} />
               {!doc.isLatestVersion && <StatusBadge status="outdated" />}
+              <StatusBadge status={doc.status} />
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               {doc.fileType} · {formatDate(doc.createdAt)}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <StatusBadge status={doc.status} />
+        <div className="flex shrink-0 items-center gap-1">
           {!isAuditor && (
             <Button
               variant="ghost"
