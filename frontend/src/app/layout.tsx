@@ -12,8 +12,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Pactura — AI Contract Intelligence",
-  description:
-    "AI-powered contract intelligence platform for federal contractors.",
+  description: "AI-powered contract intelligence platform.",
 };
 
 export const viewport: Viewport = {
